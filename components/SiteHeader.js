@@ -47,8 +47,9 @@ export function SiteHeader() {
               required
               value={term}
               onChange={(event) => setTerm(event.target.value)}
+              style={{ "--search-chars": Math.max(6, term.length) }}
             />
-            <button type="submit" aria-label="Search">
+            <button className="nav-search-submit" type="submit" aria-label="Search">
               <span className="search-icon" aria-hidden="true" />
             </button>
           </form>

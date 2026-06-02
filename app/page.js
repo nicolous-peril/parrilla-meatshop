@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HeroCarousel } from "@/components/HeroCarousel";
 import { ProductGrid } from "@/components/ProductGrid";
 import { SearchForm } from "@/components/SearchForm";
 import { getStoreProducts } from "@/lib/productRepository";
@@ -8,27 +9,7 @@ export default async function HomePage() {
 
   return (
     <main>
-      <section className="hero-shop">
-        <div className="hero-content">
-          <p className="eyebrow">Retail, wholesale, and reseller meat supply</p>
-          <h1>Parrilla Meat Shop</h1>
-          <p>
-            Shop packed meats, wholesale boxes, K-BBQ cuts, frozen goods, and reseller-ready products
-            from Alfonso, Cavite.
-          </p>
-          <div className="hero-actions">
-            <Link className="btn btn-primary" href="/retail">
-              Retail
-            </Link>
-            <Link className="btn btn-primary" href="/wholesale">
-              Wholesale
-            </Link>
-            <Link className="btn btn-primary" href="/reseller">
-              Reseller
-            </Link>
-          </div>
-        </div>
-      </section>
+      <HeroCarousel />
 
       <section className="section">
         <div className="section-inner">
