@@ -4,7 +4,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export const metadata = {
-  title: "Parrilla Meat Shop | Fresh Meat Delivery",
+  title: "Parrilla Meat Shop | Quality Frozen Meat & Food Supply",
   description:
     "Retail, wholesale, and reseller meat supply from Parrilla Meat Shop in Alfonso, Cavite."
 };
