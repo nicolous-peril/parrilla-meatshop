@@ -50,7 +50,15 @@ export function SiteHeader() {
               style={{ "--search-chars": Math.max(6, term.length) }}
             />
             <button className="nav-search-submit" type="submit" aria-label="Search">
-              <span className="search-icon" aria-hidden="true" />
+              <svg
+                className="search-icon"
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <circle cx="11" cy="11" r="6.5" />
+                <path d="m16 16 4 4" />
+              </svg>
             </button>
           </form>
           <Link className="cart-link" href="/cart" aria-label="Cart">

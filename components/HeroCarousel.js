@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const slides = [
   {
@@ -40,14 +40,30 @@ const slides = [
 
 export function HeroCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const activeSlide = slides[activeIndex];
 
   function goToSlide(index) {
     setActiveIndex((index + slides.length) % slides.length);
   }
 
+  useEffect(() => {
+    if (isPaused) return undefined;
+
+    const timer = window.setInterval(() => {
+      setActiveIndex((index) => (index + 1) % slides.length);
+    }, 4500);
+
+    return () => window.clearInterval(timer);
+  }, [isPaused]);
+
   return (
-    <section className="hero-shop" aria-label="Parrilla Meat Shop highlights">
+    <section
+      className="hero-shop"
+      aria-label="Parrilla Meat Shop highlights"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
       <div className="hero-media" aria-hidden="true">
         {slides.map((slide, index) => (
           <img
@@ -71,10 +87,27 @@ export function HeroCarousel() {
           </Link>
         </div>
       </div>
-      <div className="hero-carousel-controls" aria-label="Hero carousel controls">
-        <button type="button" onClick={() => goToSlide(activeIndex - 1)} aria-label="Previous slide">
-          ‹
-        </button>
+      <button
+        className="hero-arrow hero-arrow-prev"
+        type="button"
+        onClick={() => goToSlide(activeIndex - 1)}
+        onFocus={() => setIsPaused(true)}
+        onBlur={() => setIsPaused(false)}
+        aria-label="Previous slide"
+      >
+        <span aria-hidden="true">‹</span>
+      </button>
+      <button
+        className="hero-arrow hero-arrow-next"
+        type="button"
+        onClick={() => goToSlide(activeIndex + 1)}
+        onFocus={() => setIsPaused(true)}
+        onBlur={() => setIsPaused(false)}
+        aria-label="Next slide"
+      >
+        <span aria-hidden="true">›</span>
+      </button>
+      <div className="hero-carousel-controls" aria-label="Hero carousel slide selector">
         <div className="hero-indicators">
           {slides.map((slide, index) => (
             <button
@@ -82,14 +115,13 @@ export function HeroCarousel() {
               className={index === activeIndex ? "active" : ""}
               type="button"
               onClick={() => goToSlide(index)}
+              onFocus={() => setIsPaused(true)}
+              onBlur={() => setIsPaused(false)}
               aria-label={`Show slide ${index + 1}`}
               aria-current={index === activeIndex ? "true" : undefined}
             />
           ))}
         </div>
-        <button type="button" onClick={() => goToSlide(activeIndex + 1)} aria-label="Next slide">
-          ›
-        </button>
       </div>
     </section>
   );
