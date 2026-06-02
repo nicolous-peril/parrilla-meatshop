@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2300" height="500" viewBox="50 100 2300 500">
+<rect x="50" y="100" width="2300" height="500" fill="none"/>
+<text x="1200" y="330" text-anchor="middle"
+font-family="Amelaryas Personal, serif"
+font-size="300" letter-spacing="5" fill="#111111">PARRILLA</text>
+
+<line x1="760" y1="445" x2="950" y2="445" stroke="#666666" stroke-width="5" stroke-linecap="round"/>
+<line x1="1450" y1="445" x2="1640" y2="445" stroke="#666666" stroke-width="5" stroke-linecap="round"/>
+
+<text x="1200" y="475" text-anchor="middle"
+font-family="Montserrat, Arial, sans-serif"
+font-size="104" font-weight="700" letter-spacing="8" fill="#111111">MEAT SHOP</text>
+</svg>

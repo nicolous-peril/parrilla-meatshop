@@ -23,7 +23,7 @@ export function SiteHeader() {
           <img className="brand-mark" src="/images/parrilla logo.png" alt="" />
           <img
             className="brand-wordmark"
-            src="/images/parrilla-text-transparent.svg"
+            src="/images/parrilla-text-lockup-v2.svg"
             alt="Parrilla Meat Shop"
           />
         </Link>
