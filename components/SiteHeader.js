@@ -20,10 +20,12 @@ export function SiteHeader() {
     <header className="site-header">
       <div className="nav-wrap">
         <Link className="brand" href="/">
-          <img src="/images/parrilla logo.png" alt="Parrilla Meat Shop logo" />
-          <span>
-            <strong>Parrilla</strong> Meat Shop
-          </span>
+          <img className="brand-mark" src="/images/parrilla logo.png" alt="" />
+          <img
+            className="brand-wordmark"
+            src="/images/parrilla-text-transparent.svg"
+            alt="Parrilla Meat Shop"
+          />
         </Link>
         <nav className="main-nav" aria-label="Main navigation">
           <Link href="/">Home</Link>

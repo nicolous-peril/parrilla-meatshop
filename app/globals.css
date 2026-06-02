@@ -1,15 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap");
 
-@font-face {
-  font-family: "Amelaryas Personal";
-  src:
-    local("Amelaryas Personal"),
-    local("AmelaryasPersonal");
-  font-display: swap;
-  font-style: normal;
-  font-weight: 400;
-}
-
 :root {
   --brand-red: #ef4c3f;
   --brand-red-dark: #b72d25;
@@ -64,34 +54,22 @@ body.shop-body a {
 .brand {
   display: flex;
   align-items: center;
-  gap: 13px;
-  min-width: 244px;
+  gap: 12px;
+  min-width: 238px;
 }
 
-.brand img {
+.brand-mark {
   width: 58px;
   height: 58px;
   object-fit: contain;
 }
 
-.brand strong {
-  display: inline;
-  font-size: inherit;
-  font-weight: inherit;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.brand span {
-  color: #222;
-  display: inline-block;
-  font-family: "Amelaryas Personal", Montserrat, Arial, sans-serif;
-  font-size: clamp(1.12rem, 1.65vw, 1.36rem);
-  font-weight: 400;
-  letter-spacing: 0.035em;
-  line-height: 1.08;
-  text-transform: uppercase;
-  white-space: nowrap;
+.brand-wordmark {
+  display: block;
+  height: 50px;
+  object-fit: contain;
+  object-position: left center;
+  width: clamp(156px, 16vw, 205px);
 }
 
 .main-nav {
@@ -1189,18 +1167,18 @@ body.shop-body a {
 
 @media (max-width: 680px) {
   .brand {
-    gap: 11px;
+    gap: 10px;
     min-width: 0;
   }
 
-  .brand img {
+  .brand-mark {
     height: 54px;
     width: 54px;
   }
 
-  .brand span {
-    font-size: 1rem;
-    letter-spacing: 0.025em;
+  .brand-wordmark {
+    height: 46px;
+    width: clamp(148px, 44vw, 180px);
   }
 
   .category-grid,
