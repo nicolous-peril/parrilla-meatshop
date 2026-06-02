@@ -1,14 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
 
 export function SiteHeader() {
+  const pathname = usePathname();
   const router = useRouter();
   const { count } = useCart();
   const [term, setTerm] = useState("");
+  const shopIsActive = ["/retail", "/wholesale", "/reseller", "/product", "/search"].some((path) =>
+    pathname === path || pathname.startsWith(`${path}/`)
+  );
+
+  function navClass(href) {
+    return pathname === href ? "active" : undefined;
+  }
 
   function submitSearch(event) {
     event.preventDefault();
@@ -28,19 +36,31 @@ export function SiteHeader() {
           />
         </Link>
         <nav className="main-nav" aria-label="Main navigation">
-          <Link href="/">Home</Link>
-          <Link href="/about">About</Link>
+          <Link className={navClass("/")} href="/">
+            Home
+          </Link>
+          <Link className={navClass("/about")} href="/about">
+            About
+          </Link>
           <div className="shop-menu">
-            <button className="shop-menu-button" type="button">
+            <button className={shopIsActive ? "shop-menu-button active" : "shop-menu-button"} type="button">
               Shop
             </button>
             <div className="shop-dropdown">
-              <Link href="/retail">Retail</Link>
-              <Link href="/wholesale">Wholesale</Link>
-              <Link href="/reseller">Reseller</Link>
+              <Link className={navClass("/retail")} href="/retail">
+                Retail
+              </Link>
+              <Link className={navClass("/wholesale")} href="/wholesale">
+                Wholesale
+              </Link>
+              <Link className={navClass("/reseller")} href="/reseller">
+                Reseller
+              </Link>
             </div>
           </div>
-          <Link href="/contact">Contact</Link>
+          <Link className={navClass("/contact")} href="/contact">
+            Contact
+          </Link>
           <form className="nav-search" onSubmit={submitSearch}>
             <input
               type="search"

@@ -69,6 +69,7 @@ body.shop-body a {
   height: 50px;
   object-fit: contain;
   object-position: left center;
+  transform: translateY(3px);
   width: clamp(156px, 16vw, 205px);
 }
 
@@ -85,13 +86,14 @@ body.shop-body a {
   border-radius: 999px;
   color: #302722;
   font-size: 0.77rem;
-  font-weight: 800;
+  font-weight: 500;
   padding: 10px 12px;
   text-transform: uppercase;
 }
 
 .main-nav a:hover,
-.main-nav a.active {
+.main-nav a.active,
+.shop-menu-button.active {
   background: #fff0eb;
   color: var(--brand-red-dark);
 }
@@ -108,7 +110,7 @@ body.shop-body a {
   cursor: pointer;
   font: inherit;
   font-size: 0.77rem;
-  font-weight: 800;
+  font-weight: 500;
   min-height: 40px;
   padding: 10px 12px;
   text-transform: uppercase;
