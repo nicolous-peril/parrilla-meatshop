@@ -54,8 +54,8 @@ body.shop-body a {
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-width: 238px;
+  gap: 4px;
+  min-width: 202px;
 }
 
 .brand-mark {
@@ -66,11 +66,10 @@ body.shop-body a {
 
 .brand-wordmark {
   display: block;
-  height: 50px;
+  height: 46px;
   object-fit: contain;
   object-position: left center;
-  transform: translateY(3px);
-  width: clamp(156px, 16vw, 205px);
+  width: clamp(132px, 14vw, 174px);
 }
 
 .main-nav {
@@ -1169,7 +1168,7 @@ body.shop-body a {
 
 @media (max-width: 680px) {
   .brand {
-    gap: 10px;
+    gap: 4px;
     min-width: 0;
   }
 
@@ -1179,8 +1178,8 @@ body.shop-body a {
   }
 
   .brand-wordmark {
-    height: 46px;
-    width: clamp(148px, 44vw, 180px);
+    height: 42px;
+    width: clamp(126px, 38vw, 158px);
   }
 
   .category-grid,

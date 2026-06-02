@@ -7,8 +7,8 @@ const slides = [
   {
     image: "/images/hero/retail-customers.png",
     eyebrow: "Quality meats for every table",
-    title: "Parrilla Meat Shop",
-    copy: "Premium frozen meats, everyday cuts, and family-ready food supply from Alfonso, Cavite.",
+    title: "Quality Meats for Everyday Meals",
+    copy: "Premium frozen meats, everyday cuts, and family-ready food products for delicious meals at home.",
     primaryHref: "/retail",
     primaryLabel: "Shop Retail"
   },
@@ -31,8 +31,8 @@ const slides = [
   {
     image: "/images/hero/meal-inspirations.png",
     eyebrow: "From our freezer to your family table",
-    title: "Meals Made Easier",
-    copy: "Steak, barbecue, adobo, sinigang, and samgyupsal inspirations for real Filipino gatherings.",
+    title: "Endless Meal Possibilities",
+    copy: "Adobo, sinigang, sisig, nilaga, chicken afritada, and grilled steak ideas for family meals and special occasions.",
     primaryHref: "/retail",
     primaryLabel: "Find Products"
   }

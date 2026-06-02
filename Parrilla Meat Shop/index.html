@@ -10,7 +10,7 @@
 <body class="shop-body">
   <header class="site-header">
     <div class="nav-wrap">
-      <a class="brand" href="index.html"><img src="images/parrilla logo.png" alt="Parrilla Meat Shop logo"><span><strong>Parrilla</strong> Meat Shop</span></a>
+      <a class="brand" href="index.html"><img class="brand-mark" src="images/parrilla logo.png" alt=""><img class="brand-wordmark" src="images/parrilla-text-lockup-v2.svg" alt="Parrilla Meat Shop"></a>
       <nav class="main-nav" aria-label="Main navigation">
         <a href="index.html">Home</a><a href="about.html">About</a><div class="shop-menu"><button class="shop-menu-button" type="button">Shop</button><div class="shop-dropdown"><a href="retail.html">Retail</a><a href="wholesale.html">Wholesale</a><a href="reseller.html">Reseller</a></div></div><a href="contact.html">Contact</a><form class="nav-search" data-search-form><input type="search" placeholder="Search" aria-label="Search products" required><button type="submit" aria-label="Search"><span class="search-icon" aria-hidden="true"></span></button></form><a class="cart-link" href="cart.html" aria-label="Cart"><svg class="cart-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h8.84a2 2 0 0 0 2-1.58l1.65-7.43H5.12"></path></svg><span class="cart-count" data-cart-count>0</span></a>
       </nav>
@@ -18,15 +18,27 @@
   </header>
 
   <main>
-    <section class="hero-shop">
+    <section class="hero-shop" aria-label="Parrilla Meat Shop highlights" data-hero-carousel>
+      <div class="hero-media" aria-hidden="true">
+        <img class="active" src="images/hero/retail-customers.png" alt="">
+      </div>
       <div class="hero-content">
-        <p class="eyebrow">Retail, wholesale, and reseller meat supply</p>
-        <h1>Parrilla Meat Shop</h1>
-        <p>Shop packed meats, wholesale boxes, K-BBQ cuts, frozen goods, and reseller-ready products from Alfonso, Cavite.</p>
+        <p class="eyebrow" data-hero-eyebrow>Quality meats for every table</p>
+        <h1 data-hero-title>Quality Meats for Everyday Meals</h1>
+        <p data-hero-copy>Premium frozen meats, everyday cuts, and family-ready food products for delicious meals at home.</p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="retail.html">Retail</a>
-          <a class="btn btn-primary" href="wholesale.html">Wholesale</a>
-          <a class="btn btn-primary" href="reseller.html">Reseller</a>
+          <a class="btn btn-primary" href="retail.html" data-hero-primary>Shop Retail</a>
+          <a class="btn btn-secondary hero-secondary" href="contact.html">Contact Us</a>
+        </div>
+      </div>
+      <button class="hero-arrow hero-arrow-prev" type="button" data-hero-prev aria-label="Previous slide"><span aria-hidden="true">‹</span></button>
+      <button class="hero-arrow hero-arrow-next" type="button" data-hero-next aria-label="Next slide"><span aria-hidden="true">›</span></button>
+      <div class="hero-carousel-controls" aria-label="Hero carousel slide selector">
+        <div class="hero-indicators">
+          <button class="active" type="button" data-hero-indicator="0" aria-label="Show slide 1" aria-current="true"></button>
+          <button type="button" data-hero-indicator="1" aria-label="Show slide 2"></button>
+          <button type="button" data-hero-indicator="2" aria-label="Show slide 3"></button>
+          <button type="button" data-hero-indicator="3" aria-label="Show slide 4"></button>
         </div>
       </div>
     </section>
@@ -98,5 +110,79 @@
   </footer>
   <script src="js/catalog.js"></script>
   <script src="js/shop.js"></script>
+  <script>
+    (() => {
+      const slides = [
+        {
+          image: "images/hero/retail-customers.png",
+          eyebrow: "Quality meats for every table",
+          title: "Quality Meats for Everyday Meals",
+          copy: "Premium frozen meats, everyday cuts, and family-ready food products for delicious meals at home.",
+          href: "retail.html",
+          label: "Shop Retail"
+        },
+        {
+          image: "images/hero/wholesale-customers.png",
+          eyebrow: "Reliable supply for local food businesses",
+          title: "Bulk Meat Supply",
+          copy: "Box pricing and dependable inventory for carinderias, food stalls, caterers, and small restaurants.",
+          href: "wholesale.html",
+          label: "Shop Wholesale"
+        },
+        {
+          image: "images/hero/resellers.png",
+          eyebrow: "Build your business with Parrilla",
+          title: "Reseller-Ready Products",
+          copy: "Frozen goods and packed meats for neighborhood sellers and repeat business customers.",
+          href: "reseller.html",
+          label: "Shop Reseller"
+        },
+        {
+          image: "images/hero/meal-inspirations.png",
+          eyebrow: "From our freezer to your family table",
+          title: "Endless Meal Possibilities",
+          copy: "Adobo, sinigang, sisig, nilaga, chicken afritada, and grilled steak ideas for family meals and special occasions.",
+          href: "retail.html",
+          label: "Find Products"
+        }
+      ];
+      const carousel = document.querySelector("[data-hero-carousel]");
+      if (!carousel) return;
+      const image = carousel.querySelector(".hero-media img");
+      const indicators = [...carousel.querySelectorAll("[data-hero-indicator]")];
+      const eyebrow = carousel.querySelector("[data-hero-eyebrow]");
+      const title = carousel.querySelector("[data-hero-title]");
+      const copy = carousel.querySelector("[data-hero-copy]");
+      const primary = carousel.querySelector("[data-hero-primary]");
+      let activeIndex = 0;
+      let paused = false;
+
+      function setSlide(index) {
+        activeIndex = (index + slides.length) % slides.length;
+        const slide = slides[activeIndex];
+        image.src = slide.image;
+        indicators.forEach((indicator, indicatorIndex) => {
+          indicator.classList.toggle("active", indicatorIndex === activeIndex);
+          indicator.setAttribute("aria-current", indicatorIndex === activeIndex ? "true" : "false");
+        });
+        eyebrow.textContent = slide.eyebrow;
+        title.textContent = slide.title;
+        copy.textContent = slide.copy;
+        primary.href = slide.href;
+        primary.textContent = slide.label;
+      }
+
+      carousel.querySelector("[data-hero-prev]").addEventListener("click", () => setSlide(activeIndex - 1));
+      carousel.querySelector("[data-hero-next]").addEventListener("click", () => setSlide(activeIndex + 1));
+      indicators.forEach((indicator) => {
+        indicator.addEventListener("click", () => setSlide(Number(indicator.dataset.heroIndicator)));
+      });
+      carousel.addEventListener("mouseenter", () => { paused = true; });
+      carousel.addEventListener("mouseleave", () => { paused = false; });
+      setInterval(() => {
+        if (!paused) setSlide(activeIndex + 1);
+      }, 4500);
+    })();
+  </script>
 </body>
 </html>
