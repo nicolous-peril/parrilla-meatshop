@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/components/CartProvider";
-import { channelPrice, displayName, priceLabel } from "@/lib/products";
+import { channelPrice, displayName, priceLabel, productImagePath } from "@/lib/products";
 
 export function ProductDetailClient({ product, channel }) {
   const { addToCart } = useCart();
@@ -12,7 +12,7 @@ export function ProductDetailClient({ product, channel }) {
   return (
     <div className="section-inner info-grid">
       <div className="product-image">
-        <img src="/images/parrilla logo.png" alt="" />
+        <img src={productImagePath(product, channel)} alt="" />
       </div>
       <div className="panel">
         <p className="eyebrow">

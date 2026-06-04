@@ -10,23 +10,23 @@ const slides = [
     title: "Quality Meats for Everyday Meals",
     copy: "Premium frozen meats, everyday cuts, and family-ready food products for delicious meals at home.",
     primaryHref: "/retail",
-    primaryLabel: "Shop Retail"
+    primaryLabel: "Shop Retail Products"
   },
   {
     image: "/images/hero/wholesale-customers.png",
     eyebrow: "Reliable supply for local food businesses",
-    title: "Bulk Meat Supply",
+    title: "Reliable Supply for Local Food Businesses",
     copy: "Box pricing and dependable inventory for carinderias, food stalls, caterers, and small restaurants.",
-    primaryHref: "/wholesale",
-    primaryLabel: "Shop Wholesale"
+    primaryHref: "/contact",
+    primaryLabel: "Request Wholesale Pricing"
   },
   {
     image: "/images/hero/resellers.png",
     eyebrow: "Build your business with Parrilla",
-    title: "Reseller-Ready Products",
+    title: "Build Your Business with Parrilla",
     copy: "Frozen goods and packed meats for neighborhood sellers and repeat business customers.",
     primaryHref: "/reseller",
-    primaryLabel: "Shop Reseller"
+    primaryLabel: "Become a Reseller"
   },
   {
     image: "/images/hero/meal-inspirations.png",
@@ -34,7 +34,7 @@ const slides = [
     title: "Endless Meal Possibilities",
     copy: "Adobo, sinigang, sisig, nilaga, chicken afritada, and grilled steak ideas for family meals and special occasions.",
     primaryHref: "/retail",
-    primaryLabel: "Find Products"
+    primaryLabel: "Browse Products"
   }
 ];
 

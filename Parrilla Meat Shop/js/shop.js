@@ -72,6 +72,53 @@
     return titleCase(product.name || "");
   }
 
+  const productImageRules = [
+    ["chicken-leg-quarter", "chicken-leg-quarter.jpg"],
+    ["chicken-breast-fillet", "chicken-breast-fillet.jpg"],
+    ["chickengizzard", "chicken-gizzard.jpg"],
+    ["vibra-whole-chicken", "whole-chicken-variant.jpg"],
+    ["dressed-half-chicken", "half-chicken.jpg"],
+    ["magnolia-whole-chicken", "whole-chicken.jpg"],
+    ["dressed-whole-chicken", "whole-chicken.jpg"],
+    ["whole-chicken", "whole-chicken.jpg"],
+    ["chicken-liver", "chicken-liver.jpg"],
+    ["chicken-gizzard", "chicken-gizzard.jpg"],
+    ["half-chicken", "half-chicken.jpg"],
+    ["pork-picnic-shoulder", "pork-laman.jpg"],
+    ["pork-laman", "pork-laman.jpg"],
+    ["pork-belly", "pork-liempo.jpg"],
+    ["liempo", "pork-liempo.jpg"],
+    ["pork-chop", "pork-chop.jpg"],
+    ["pork-spareribs", "pork-spare-ribs.jpg"],
+    ["pork-spare-ribs", "pork-spare-ribs.jpg"],
+    ["riblets", "pork-riblets.jpg"],
+    ["pork-liver", "pork-liver.jpg"],
+    ["pork-jowls", "pork-jowl.jpg"],
+    ["pork-jowl", "pork-jowl.jpg"],
+    ["pork-ear", "pork-ear.jpg"],
+    ["pork-mask", "pork-mask.jpg"],
+    ["pork-hock-pata-whole-sliced", "pork-hock-combination.jpg"],
+    ["pork-pata-front-whole", "pork-hock-whole.jpg"],
+    ["pork-hock-whole", "pork-hock-whole.jpg"],
+    ["pork-hock-slice", "pork-hock-slice.jpg"],
+    ["pork-samgyeopsal", "pork-samgyeopsal.jpg"],
+    ["samgyeopsal", "pork-samgyeopsal.jpg"],
+    ["ground-pork", "ground-pork.jpg"],
+    ["pork-flower-fat", "flower-fat.jpg"],
+    ["flower-fat", "flower-fat.jpg"]
+  ];
+
+  function productImagePath(product, channel) {
+    if (channel === "wholesale") return "images/parrilla logo.png";
+    if (product.imagePath && !product.imagePath.includes("parrilla logo.png")) return product.imagePath;
+    if (!product.channels?.some((item) => item === "retail" || item === "reseller")) {
+      return "images/parrilla logo.png";
+    }
+    const key = `${product.id || ""} ${product.name || ""}`.toLowerCase();
+    const match = productImageRules.find(([needle]) => key.includes(needle));
+    return match ? `images/products/${match[1]}` : "images/parrilla logo.png";
+  }
+
   function titleCase(value) {
     const smallWords = new Set(["and", "or", "of", "with", "w", "out", "per"]);
     return String(value)
@@ -146,7 +193,7 @@
     return `
       <article class="product-card" data-product-card data-name="${escapeAttr(product.name)}" data-category="${escapeAttr(product.category)}" data-sub-category="${escapeAttr(product.subCategory || "")}">
         <div class="product-image">
-          <img src="images/parrilla logo.png" alt="">
+          <img src="${productImagePath(product, channel)}" alt="">
         </div>
         <div class="product-body">
           <h3>${displayName(product)}</h3>
@@ -416,7 +463,7 @@
     }
 
     mount.innerHTML = `
-      <div class="product-image"><img src="images/parrilla logo.png" alt=""></div>
+      <div class="product-image"><img src="${productImagePath(product, channel)}" alt=""></div>
       <div class="panel">
         <p class="eyebrow">${product.category}${product.subCategory ? ` / ${product.subCategory}` : ""}</p>
         <h1>${displayName(product)}</h1>

@@ -557,17 +557,15 @@ body.shop-body a {
 .product-image {
   align-items: center;
   aspect-ratio: 4 / 3;
-  background:
-    radial-gradient(circle at 50% 32%, rgba(239, 76, 63, 0.18), transparent 36%),
-    linear-gradient(135deg, #fff3ea, #f5dfcf);
+  background: #fff;
   display: flex;
   justify-content: center;
   padding: 28px;
 }
 
 .product-image img {
-  max-height: 92px;
-  max-width: 92px;
+  max-height: 100%;
+  max-width: 100%;
   object-fit: contain;
 }
 
@@ -584,7 +582,7 @@ body.shop-body a {
   -webkit-line-clamp: 2;
   display: -webkit-box;
   font-size: 1.18rem;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1.25;
   margin: 0;
   min-height: 2.95rem;
@@ -613,7 +611,7 @@ body.shop-body a {
 
 .price {
   font-size: 1.05rem;
-  font-weight: 900;
+  font-weight: 500;
   margin: 0 0 4px;
   color: var(--brand-red-dark);
 }
@@ -622,12 +620,13 @@ body.shop-body a {
   color: var(--muted);
   display: block;
   font-size: 0.74rem;
-  font-weight: 700;
+  font-weight: 400;
   margin-top: 2px;
 }
 
 .product-actions .btn {
   flex: 1;
+  font-weight: 500;
   min-width: 120px;
 }
 
@@ -674,6 +673,7 @@ body.shop-body a {
   color: var(--muted);
   display: -webkit-box;
   font-size: 0.9rem;
+  font-weight: 400;
   line-height: 1.45;
   margin: 0;
   min-height: 2.6em;
@@ -682,6 +682,7 @@ body.shop-body a {
 
 .product-meta strong {
   color: var(--ink);
+  font-weight: 400;
 }
 
 .product-promo {

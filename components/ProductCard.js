@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/components/CartProvider";
-import { displayName, priceLabel } from "@/lib/products";
+import { displayName, priceLabel, productImagePath } from "@/lib/products";
 
 export function ProductCard({ product, channel }) {
   const { addToCart, cart, updateQuantity } = useCart();
@@ -19,7 +19,7 @@ export function ProductCard({ product, channel }) {
       data-sub-category={product.subCategory || ""}
     >
       <div className="product-image">
-        <img src="/images/parrilla logo.png" alt="" />
+        <img src={productImagePath(product, channel)} alt="" />
       </div>
       <div className="product-body">
         <h3>{displayName(product)}</h3>
