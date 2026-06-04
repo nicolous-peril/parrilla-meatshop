@@ -74,6 +74,7 @@
 
   const productImageRules = [
     ["chicken-leg-quarter", "chicken-leg-quarter.jpg"],
+    ["chicken-wings", "chicken-wings.jpg"],
     ["chicken-breast-fillet", "chicken-breast-fillet.jpg"],
     ["chickengizzard", "chicken-gizzard.jpg"],
     ["vibra-whole-chicken", "whole-chicken-variant.jpg"],
@@ -101,8 +102,8 @@
     ["pork-pata-front-whole", "pork-hock-whole.jpg"],
     ["pork-hock-whole", "pork-hock-whole.jpg"],
     ["pork-hock-slice", "pork-hock-slice.jpg"],
+    ["beef-samgyeopsal", "beef-samgyeopsal.jpg"],
     ["pork-samgyeopsal", "pork-samgyeopsal.jpg"],
-    ["samgyeopsal", "pork-samgyeopsal.jpg"],
     ["ground-pork", "ground-pork.jpg"],
     ["pork-flower-fat", "flower-fat.jpg"],
     ["flower-fat", "flower-fat.jpg"]

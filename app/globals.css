@@ -560,13 +560,15 @@ body.shop-body a {
   background: #fff;
   display: flex;
   justify-content: center;
-  padding: 28px;
+  padding: 20px;
 }
 
 .product-image img {
-  max-height: 100%;
-  max-width: 100%;
+  height: 100%;
   object-fit: contain;
+  transform: scale(0.9);
+  transform-origin: center;
+  width: 100%;
 }
 
 .product-body {
