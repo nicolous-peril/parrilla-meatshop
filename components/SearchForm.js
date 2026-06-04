@@ -23,9 +23,17 @@ export function SearchForm({ className = "toolbar", initialValue = "", compact =
         required
         value={term}
         onChange={(event) => setTerm(event.target.value)}
+        style={compact ? { "--search-chars": Math.max(6, term.length) } : undefined}
       />
-      <button className={compact ? "" : "btn btn-dark"} type="submit">
-        Search
+      <button className={compact ? "nav-search-submit" : "btn btn-dark"} type="submit" aria-label="Search">
+        {compact ? (
+          <svg className="search-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="m16 16 4 4" />
+          </svg>
+        ) : (
+          "Search"
+        )}
       </button>
     </form>
   );

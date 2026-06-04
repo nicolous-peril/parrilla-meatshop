@@ -205,6 +205,11 @@ body.shop-body a {
   width: 44px;
 }
 
+.section-search {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 .search-icon {
   border: 2px solid currentColor;
   border-radius: 50%;
@@ -502,6 +507,10 @@ body.shop-body a {
 
 .category-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.category-grid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .category-tile,
@@ -1139,6 +1148,10 @@ body.shop-body a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .category-grid-three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .admin-editor {
     position: static;
   }
@@ -1188,6 +1201,10 @@ body.shop-body a {
   .section-title {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .section-search {
+    margin-left: 0;
   }
 
   .cart-row {
