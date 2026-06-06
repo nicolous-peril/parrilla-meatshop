@@ -10,6 +10,8 @@ export function ProductCard({ product, channel }) {
   const out = product.stock === "out-of-stock";
   const isWholesale = channel === "wholesale";
   const hasPrice = Boolean(product.resellerPrice || product.price);
+  const productName = displayName(product);
+  const detailsHref = `/product/${product.id}?channel=${channel}`;
 
   return (
     <article
@@ -18,11 +20,18 @@ export function ProductCard({ product, channel }) {
       data-category={product.category}
       data-sub-category={product.subCategory || ""}
     >
-      <div className="product-image">
-        <img src={productImagePath(product, channel)} alt="" />
-      </div>
+      <Link
+        className="product-image"
+        href={detailsHref}
+        aria-label={`View details for ${productName}`}
+      >
+        <img
+          src={productImagePath(product, channel)}
+          alt={`${productName} product`}
+        />
+      </Link>
       <div className="product-body">
-        <h3>{displayName(product)}</h3>
+        <h3>{productName}</h3>
         <div className="price">{priceLabel(product, channel)}</div>
         {isWholesale ? (
           <>
@@ -72,7 +81,7 @@ export function ProductCard({ product, channel }) {
               Add to cart
             </button>
           )}
-          <Link className="btn btn-secondary" href={`/product/${product.id}?channel=${channel}`}>
+          <Link className="btn btn-secondary" href={detailsHref}>
             Details
           </Link>
         </div>
