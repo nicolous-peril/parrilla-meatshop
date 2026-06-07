@@ -1,16 +1,13 @@
 import { notFound } from "next/navigation";
 import { ProductDetailClient } from "@/components/ProductDetailClient";
-import { displayName, getProduct, fallbackProducts } from "@/lib/products";
-import { getStoreProducts } from "@/lib/productRepository";
+import { displayName } from "@/lib/products";
+import { getStoreProduct } from "@/lib/productRepository";
 
-export function generateStaticParams() {
-  return fallbackProducts.map((product) => ({ id: product.id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
-  const products = await getStoreProducts();
-  const product = getProduct(products, id);
+  const product = await getStoreProduct(id);
   return {
     title: product ? `${displayName(product)} | Parrilla Meat Shop` : "Product | Parrilla Meat Shop"
   };
@@ -19,10 +16,12 @@ export async function generateMetadata({ params }) {
 export default async function ProductPage({ params, searchParams }) {
   const { id } = await params;
   const query = await searchParams;
-  const products = await getStoreProducts();
-  const product = getProduct(products, id);
+  const product = await getStoreProduct(id);
   if (!product) notFound();
-  const channel = query?.channel || product.channels[0] || "retail";
+  const requestedChannel = query?.channel;
+  const channel = product.channels.includes(requestedChannel)
+    ? requestedChannel
+    : product.channels[0] || "retail";
 
   return (
     <main>

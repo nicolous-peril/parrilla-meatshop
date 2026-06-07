@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { CartSummary } from "@/components/CartSummary";
 import { useCart } from "@/components/CartProvider";
-import { displayName, peso } from "@/lib/products";
+import { displayName, peso, productImagePath } from "@/lib/products";
 
 export function CartPageClient({ products }) {
-  const { cart, removeItem, updateQuantity } = useCart();
+  const { cart, removeItem, syncProducts, updateQuantity } = useCart();
+
+  useEffect(() => {
+    syncProducts(products);
+  }, [products, syncProducts]);
 
   return (
     <section className="section">
@@ -20,7 +25,7 @@ export function CartPageClient({ products }) {
               return (
                 <div className="cart-row" key={item.key}>
                   <div className="cart-thumb">
-                    <img src="/images/parrilla logo.png" alt="" />
+                    <img src={productImagePath(product, item.channel)} alt="" />
                   </div>
                   <div>
                     <strong>{displayName(product)}</strong>

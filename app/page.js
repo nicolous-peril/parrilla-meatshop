@@ -19,7 +19,7 @@ export default async function HomePage() {
             </div>
             <SearchForm className="nav-search section-search" compact />
           </div>
-          <ProductGrid products={products} channel="retail" featuredGroup="homeRetailFeatured" />
+          <ProductGrid products={products} channel="retail" featuredGroup="featured" />
         </div>
       </section>
 
@@ -30,7 +30,7 @@ export default async function HomePage() {
               <p className="eyebrow">Featured wholesale products</p>
             </div>
           </div>
-          <ProductGrid products={products} channel="wholesale" featuredGroup="homeWholesaleFeatured" />
+          <ProductGrid products={products} channel="wholesale" featuredGroup="featured" />
         </div>
       </section>
 

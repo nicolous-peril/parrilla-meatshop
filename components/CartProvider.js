@@ -96,12 +96,31 @@ export function CartProvider({ children }) {
       setCart([]);
     }
 
+    function syncProducts(products) {
+      setCart((current) => {
+        const productById = new Map(products.map((product) => [product.id, product]));
+        const next = current.flatMap((item) => {
+          const product = productById.get(item.productId);
+          if (!product || !product.channels.includes(item.channel)) return [];
+          return {
+            ...item,
+            price: channelPrice(product, item.channel)
+          };
+        });
+
+        if (JSON.stringify(next) === JSON.stringify(current)) return current;
+        writeCart(next);
+        return next;
+      });
+    }
+
     return {
       cart,
       addToCart,
       updateQuantity,
       removeItem,
       clearCart,
+      syncProducts,
       count: cart.reduce((sum, item) => sum + item.qty, 0)
     };
   }, [cart]);

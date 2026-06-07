@@ -72,6 +72,18 @@ export async function POST(request) {
     return NextResponse.json({ error: "One or more products are no longer available." }, { status: 400 });
   }
 
+  const invalidChannel = cart.find((item) => {
+    const product = productById.get(item.productId);
+    return !Array.isArray(product.channels) || !product.channels.includes(item.channel);
+  });
+
+  if (invalidChannel) {
+    return NextResponse.json(
+      { error: "One or more products are not available for the selected sales channel." },
+      { status: 400 }
+    );
+  }
+
   const orderItems = cart.map((item) => {
     const product = productById.get(item.productId);
     const normalizedProduct = {
@@ -88,7 +100,7 @@ export async function POST(request) {
       name: displayName(normalizedProduct),
       channel: item.channel,
       qty: item.qty,
-      packaging: product.packaging || "Pack",
+      packaging: [product.pack_size, product.packaging].filter(Boolean).join(" / ") || "Pack",
       unit_price: unitPrice,
       amount,
       final_price: amount

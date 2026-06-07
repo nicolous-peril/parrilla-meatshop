@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CartSummary } from "@/components/CartSummary";
 import { useCart } from "@/components/CartProvider";
 import { displayName, peso } from "@/lib/products";
@@ -33,10 +33,14 @@ function buildOrderMessage(cart, data, products) {
 }
 
 export function CheckoutPageClient({ products }) {
-  const { cart, clearCart } = useCart();
+  const { cart, clearCart, syncProducts } = useCart();
   const [confirmation, setConfirmation] = useState("");
   const [mailto, setMailto] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    syncProducts(products);
+  }, [products, syncProducts]);
 
   async function submitOrder(event) {
     event.preventDefault();

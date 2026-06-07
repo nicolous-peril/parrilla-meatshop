@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAdminAuth } from "@/components/AdminAuthProvider";
-import { peso } from "@/lib/products";
+import { peso, productImagePath } from "@/lib/products";
 
 const EMPTY_PRODUCT = {
   id: "",
@@ -194,8 +194,61 @@ export function AdminProductsClient() {
       setMessage(`Could not load products: ${error.message}`);
       setProducts([]);
     } else {
-      setProducts(data || []);
-      setMessage(successMessage);
+      const rows = data || [];
+      const normalizedRows = rows.map((product) => {
+        const normalizedImage = productImagePath(
+          {
+            id: product.id,
+            name: product.name,
+            channels: product.channels || [],
+            imagePath: product.image_path
+          },
+          product.channels?.[0] || "retail"
+        );
+        return {
+          ...product,
+          featured: Boolean(
+            product.featured ||
+            product.home_retail_featured ||
+            product.home_wholesale_featured
+          ),
+          home_retail_featured: false,
+          home_wholesale_featured: false,
+          image_path: normalizedImage
+        };
+      });
+      const legacyRows = normalizedRows.filter((product, index) => {
+        const original = rows[index];
+        return (
+          original.home_retail_featured ||
+          original.home_wholesale_featured ||
+          original.image_path !== product.image_path
+        );
+      });
+
+      let migrationMessage = "";
+      if (legacyRows.length) {
+        const results = await Promise.all(
+          legacyRows.map((product) =>
+            supabase
+              .from("products")
+              .update({
+                featured: product.featured,
+                home_retail_featured: false,
+                home_wholesale_featured: false,
+                image_path: product.image_path
+              })
+              .eq("id", product.id)
+          )
+        );
+        const migrationError = results.find((result) => result.error)?.error;
+        if (migrationError) {
+          migrationMessage = `Could not consolidate legacy product fields: ${migrationError.message}`;
+        }
+      }
+
+      setProducts(normalizedRows);
+      setMessage(successMessage || migrationMessage);
     }
     setIsLoading(false);
   }
@@ -240,11 +293,18 @@ export function AdminProductsClient() {
     if (!file) return;
     setIsUploading(true);
     setMessage("");
+    const previousImage = form.image_path;
+    let localPreview = "";
     try {
-      const imagePath = await optimizeImage(file);
-      setForm((current) => ({ ...current, image_path: imagePath }));
+      localPreview = URL.createObjectURL(file);
+      setForm((current) => ({ ...current, image_path: localPreview }));
+      const imageUrl = await optimizeImage(file);
+      setForm((current) => ({ ...current, image_path: imageUrl }));
     } catch (error) {
+      setForm((current) => ({ ...current, image_path: previousImage }));
       setMessage(error.message);
+    } finally {
+      if (localPreview) URL.revokeObjectURL(localPreview);
     }
     setIsUploading(false);
     event.target.value = "";
@@ -279,8 +339,8 @@ export function AdminProductsClient() {
       brand: form.brand.trim() || null,
       stock: form.stock,
       featured: form.featured,
-      home_retail_featured: form.home_retail_featured,
-      home_wholesale_featured: form.home_wholesale_featured,
+      home_retail_featured: false,
+      home_wholesale_featured: false,
       promo: form.promo.trim() || null,
       description: form.description.trim() || null,
       image_path: form.image_path || "/images/parrilla logo.png",
@@ -484,7 +544,7 @@ export function AdminProductsClient() {
                 <img src={form.image_path || "/images/parrilla logo.png"} alt="Product preview" />
                 <div>
                   <strong>Product Image</strong>
-                  <p>JPG, PNG, or WebP. Images are optimized before saving.</p>
+                  <p>JPG, PNG, or WebP. Images are optimized and saved with the product record.</p>
                   <button className="admin-secondary-action" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
                     {isUploading ? "Processing image..." : "Upload Product Image"}
                   </button>
