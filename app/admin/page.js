@@ -1,7 +1,7 @@
-import Link from "next/link";
+import { AdminOrdersClient } from "@/components/AdminOrdersClient";
 
 export const metadata = {
-  title: "Admin | Parrilla Meat Shop"
+  title: "Admin Orders | Parrilla Meat Shop"
 };
 
 export default function AdminPage() {
@@ -9,26 +9,12 @@ export default function AdminPage() {
     <main>
       <section className="page-hero">
         <div className="section-inner">
-          <p className="eyebrow">Admin</p>
-          <h1>Production admin is moving to Supabase</h1>
-          <p>
-            The old static-site admin password was visible in browser code. This route is reserved for
-            secure Supabase Auth and database-backed catalog/order management.
-          </p>
+          <p className="eyebrow">Admin orders</p>
+          <h1>Orders management</h1>
+          <p>Review customer requests, line items, payment status, and processing status.</p>
         </div>
       </section>
-      <section className="section">
-        <div className="section-inner admin-dashboard">
-          <Link className="admin-card" href="/admin/catalogue">
-            <strong>Catalogue</strong>
-            <span>Supabase-backed product management will be added here.</span>
-          </Link>
-          <Link className="admin-card" href="/admin/orders">
-            <strong>Orders</strong>
-            <span>Database-backed order processing will be added here.</span>
-          </Link>
-        </div>
-      </section>
+      <AdminOrdersClient />
     </main>
   );
 }

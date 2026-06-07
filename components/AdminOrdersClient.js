@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { createSupabaseBrowserClient } from "@/lib/supabase";
+import { useAdminAuth } from "@/components/AdminAuthProvider";
 import { peso } from "@/lib/products";
 
-const ORDER_STATUSES = ["pending", "confirmed", "preparing", "ready", "completed", "cancelled"];
+const ORDER_STATUSES = ["ready", "completed", "cancelled"];
 
 function formatDate(value) {
   if (!value) return "";
@@ -16,50 +16,27 @@ function formatDate(value) {
 }
 
 function statusClass(status) {
-  return status === "completed" ? "status-pill is-complete" : "status-pill";
+  if (status === "completed") return "status-pill is-complete";
+  if (status === "cancelled") return "status-pill is-cancelled";
+  if (status === "ready") return "status-pill is-ready";
+  return "status-pill";
+}
+
+function displayStatus(status) {
+  return status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending";
 }
 
 export function AdminOrdersClient() {
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-  const [session, setSession] = useState(null);
+  const { supabase, signOut } = useAdminAuth();
   const [orders, setOrders] = useState([]);
-  const [email, setEmail] = useState("parrillameatshop@gmail.com");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("Checking admin session...");
+  const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [openStatusMenu, setOpenStatusMenu] = useState(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   useEffect(() => {
-    let active = true;
-
-    async function loadSession() {
-      const { data } = await supabase.auth.getSession();
-      if (!active) return;
-      setSession(data.session || null);
-      setMessage(data.session ? "" : "Sign in with your admin account to view orders.");
-      setIsLoading(false);
-    }
-
-    loadSession();
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setMessage(nextSession ? "" : "Sign in with your admin account to view orders.");
-    });
-
-    return () => {
-      active = false;
-      listener.subscription.unsubscribe();
-    };
-  }, [supabase]);
-
-  useEffect(() => {
-    if (!session) {
-      setOrders([]);
-      return;
-    }
     loadOrders();
-  }, [session]);
+  }, [supabase]);
 
   async function loadOrders() {
     setIsLoading(true);
@@ -104,89 +81,37 @@ export function AdminOrdersClient() {
     setIsLoading(false);
   }
 
-  async function signIn(event) {
-    event.preventDefault();
-    setIsSigningIn(true);
-    setMessage("Signing in...");
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) {
-      setMessage(error.message);
-    } else {
-      setPassword("");
-      setMessage("");
-    }
-
-    setIsSigningIn(false);
-  }
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    setOrders([]);
-  }
-
   async function updateOrderStatus(orderId, status) {
+    setOpenStatusMenu(null);
+    setUpdatingOrderId(orderId);
     setMessage("Updating order status...");
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("orders")
       .update({ status })
-      .eq("id", orderId);
+      .eq("id", orderId)
+      .select("id, status")
+      .single();
 
     if (error) {
       setMessage(`Could not update order: ${error.message}`);
+      setUpdatingOrderId(null);
       return;
     }
 
     setOrders((current) =>
-      current.map((order) => (order.id === orderId ? { ...order, status } : order))
+      current.map((order) => (order.id === orderId ? { ...order, status: data.status } : order))
     );
-    setMessage("");
-  }
-
-  if (!session) {
-    return (
-      <section className="section">
-        <div className="section-inner">
-          <form className="panel form-grid admin-login" onSubmit={signIn}>
-            <h2>Staff login</h2>
-            <p className="muted">Use the Supabase Auth account created for Parrilla Meat Shop.</p>
-            <input
-              className="field"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="Email"
-              required
-            />
-            <input
-              className="field"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Password"
-              required
-            />
-            <button className="btn btn-primary" type="submit" disabled={isSigningIn}>
-              {isSigningIn ? "Signing in..." : "Sign in"}
-            </button>
-            {message ? <p className="form-message">{message}</p> : null}
-          </form>
-        </div>
-      </section>
-    );
+    setMessage(`Order ${displayStatus(data.status).toLowerCase()}.`);
+    setUpdatingOrderId(null);
   }
 
   return (
     <section className="section">
       <div className="section-inner admin-workspace">
         <div className="admin-subnav">
-          <Link href="/admin">Admin home</Link>
-          <Link href="/admin/catalogue">Catalogue</Link>
-          <Link className="active" href="/admin/orders">Orders</Link>
+          <Link className="active" href="/admin">Orders</Link>
+          <Link href="/admin/products">Products</Link>
+          <span className="admin-subnav-spacer" />
           <button className="btn btn-secondary" type="button" onClick={loadOrders} disabled={isLoading}>
             Refresh
           </button>
@@ -205,22 +130,38 @@ export function AdminOrdersClient() {
                   <div>
                     <p className="eyebrow">{formatDate(order.created_at)}</p>
                     <h3>{order.order_number}</h3>
-                    <span className={statusClass(order.status)}>{order.status}</span>
+                    <span className={statusClass(order.status)}>{displayStatus(order.status)}</span>
                   </div>
-                  <label className="status-control">
+                  <div className="status-control">
                     <span>Status</span>
-                    <select
-                      className="select"
-                      value={order.status}
-                      onChange={(event) => updateOrderStatus(order.id, event.target.value)}
+                    <button
+                      className="status-menu-button"
+                      type="button"
+                      aria-haspopup="menu"
+                      aria-expanded={openStatusMenu === order.id}
+                      onClick={() =>
+                        setOpenStatusMenu((current) => (current === order.id ? null : order.id))
+                      }
+                      disabled={updatingOrderId === order.id}
                     >
-                      {ORDER_STATUSES.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      {updatingOrderId === order.id ? "Saving..." : displayStatus(order.status)}
+                      <span aria-hidden="true">▾</span>
+                    </button>
+                    {openStatusMenu === order.id ? (
+                      <div className="status-menu" role="menu">
+                        {ORDER_STATUSES.map((status) => (
+                          <button
+                            key={status}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => updateOrderStatus(order.id, status)}
+                          >
+                            {displayStatus(status)}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="order-contact">
