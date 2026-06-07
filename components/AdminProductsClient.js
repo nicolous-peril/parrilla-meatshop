@@ -114,15 +114,19 @@ function DashboardIcon({ type }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[type]}</svg>;
 }
 
-function ActionIcon({ type }) {
-  if (type === "view") {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></svg>;
-  }
-  if (type === "edit") {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20Z" /><path d="m13.5 7 3.5 3.5" /></svg>;
-  }
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" /></svg>;
-}
+const TABLE_COLUMNS = [
+  { key: "image", label: "Image" },
+  { key: "name", label: "Product Name" },
+  { key: "sku", label: "SKU / Product ID" },
+  { key: "category", label: "Category" },
+  { key: "channel", label: "Sales Channel" },
+  { key: "pack", label: "Pack Size / Unit" },
+  { key: "price", label: "Price" },
+  { key: "stock", label: "Stock Status" },
+  { key: "featured", label: "Featured" },
+  { key: "updated", label: "Last Updated" },
+  { key: "actions", label: "Actions" }
+];
 
 async function optimizeImage(file) {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
@@ -421,6 +425,9 @@ export function AdminProductsClient() {
     if (error) {
       setMessage(`Could not delete product: ${error.message}`);
     } else {
+      setModalOpen(false);
+      setSelectedId(null);
+      setForm(EMPTY_PRODUCT);
       await loadProducts(`${deleteProduct.name} permanently deleted.`);
     }
     setDeleteProduct(null);
@@ -436,23 +443,19 @@ export function AdminProductsClient() {
 
   function exportProducts() {
     const rows = [
-      ["SKU", "Product", "Category", "Sub-Category", "Brand", "Channel", "Configuration", "Pack Size", "MOQ", "Price", "On Hand", "Stock", "Featured", "Active", "Notes"],
+      TABLE_COLUMNS.map((column) => column.label),
       ...visibleProducts.map((product) => [
-        product.sku,
+        product.image_path,
         product.name,
+        product.sku,
         product.category,
-        product.sub_category,
-        product.brand,
         product.sales_channel,
-        product.configuration,
-        product.pack_size,
-        `${product.moq} ${product.moq_unit}`,
+        [product.configuration, product.pack_size || product.packaging].filter(Boolean).join(" / "),
         product.price,
-        product.on_hand_qty,
         product.stock,
         product.featured ? "Yes" : "No",
-        product.active ? "Yes" : "No",
-        product.notes
+        product.updated_at,
+        ""
       ])
     ];
     const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
@@ -519,34 +522,36 @@ export function AdminProductsClient() {
 
         <div className="admin-products-table-wrap">
           <table className="admin-products-table">
-            <thead><tr>
-              <th>Image</th><th>Product Name</th><th>SKU</th><th>Category</th><th>Sub-Category</th><th>Brand</th>
-              <th>Channel</th><th>Configuration</th><th>Pack / Unit</th><th>MOQ</th><th>Price</th><th>On Hand</th>
-              <th>Stock</th><th>Featured</th><th>Notes</th><th>Updated</th><th>Actions</th>
-            </tr></thead>
+            <thead>
+              <tr>
+                {TABLE_COLUMNS.map((column) => (
+                  <th className={`admin-product-col-${column.key}`} key={column.key}>{column.label}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
               {visibleProducts.map((product) => (
                 <tr className={product.active ? "" : "is-inactive"} key={product.id}>
-                  <td><img className="admin-product-table-image" src={product.image_path} alt="" /></td>
-                  <td><strong>{product.name}</strong><small>{product.active ? "Active" : "Inactive"}</small></td>
+                  <td className="admin-product-col-image"><img className="admin-product-table-image" src={product.image_path} alt="" /></td>
+                  <td className="admin-product-name-cell">
+                    <strong>{product.name}</strong>
+                    <small>{product.active ? "Active" : "Inactive"}{product.notes ? ` / ${product.notes}` : ""}</small>
+                  </td>
                   <td><code>{product.sku || "Pending"}</code></td>
                   <td>{product.category}</td>
-                  <td>{product.sub_category || "—"}</td>
-                  <td>{product.brand || "—"}</td>
                   <td><span className={`admin-channel-pill is-${product.sales_channel}`}>{product.sales_channel}</span></td>
-                  <td>{product.configuration || "—"}</td>
-                  <td>{product.pack_size || product.packaging || "—"}</td>
-                  <td>{product.moq} <small>{product.moq_unit}</small></td>
+                  <td>
+                    {[product.configuration, product.pack_size || product.packaging].filter(Boolean).join(" / ") || "—"}
+                    {product.brand ? <small>{product.brand}</small> : null}
+                    {product.moq ? <small>MOQ {product.moq} {product.moq_unit}</small> : null}
+                  </td>
                   <td><strong>{product.price === null ? "Quote" : peso.format(Number(product.price))}</strong></td>
-                  <td>{product.on_hand_qty ?? 0}</td>
                   <td><span className={`admin-stock-label ${product.stock === "in-stock" ? "is-in-stock" : "is-out-of-stock"}`}>{product.stock === "in-stock" ? "In Stock" : "Out of Stock"}</span></td>
-                  <td><span className={product.featured ? "admin-featured-label is-featured" : "admin-featured-label"}>{product.featured ? "Featured" : "Standard"}</span></td>
-                  <td className="admin-product-notes-cell">{product.notes || "—"}</td>
+                  <td>{product.featured ? "Yes" : "No"}</td>
                   <td>{formatDate(product.updated_at)}</td>
-                  <td><div className="admin-product-actions">
-                    <a href={`/product/${product.id}?channel=${product.sales_channel}`} target="_blank" rel="noreferrer" title="View product"><ActionIcon type="view" /></a>
-                    <button type="button" onClick={() => openEditProduct(product)} title="Edit product"><ActionIcon type="edit" /></button>
-                    <button className="is-destructive" type="button" onClick={() => setDeleteProduct(product)} title="Permanently delete product"><ActionIcon type="delete" /></button>
+                  <td><div className="admin-product-actions admin-product-text-actions">
+                    <a href={`/product/${product.id}?channel=${product.sales_channel}`} target="_blank" rel="noreferrer">View</a>
+                    <button type="button" onClick={() => openEditProduct(product)}>Edit</button>
                   </div></td>
                 </tr>
               ))}
@@ -634,8 +639,17 @@ export function AdminProductsClient() {
                 <label><input type="checkbox" name="active" checked={form.active} onChange={updateField} /><span>Active Product</span></label>
               </div>
               <footer>
-                <button className="admin-secondary-action" type="button" onClick={closeModal}>Cancel</button>
-                <button className="admin-primary-action" type="submit" disabled={isSaving || isUploading}>{isSaving ? "Saving..." : "Save Product"}</button>
+                <div>
+                  {selectedId ? (
+                    <button className="admin-danger-link" type="button" onClick={() => setDeleteProduct({ id: selectedId, name: form.name, sku: form.sku })}>
+                      Delete Product
+                    </button>
+                  ) : null}
+                </div>
+                <div>
+                  <button className="admin-secondary-action" type="button" onClick={closeModal}>Cancel</button>
+                  <button className="admin-primary-action" type="submit" disabled={isSaving || isUploading}>{isSaving ? "Saving..." : "Save Product"}</button>
+                </div>
               </footer>
             </form>
           </section>
