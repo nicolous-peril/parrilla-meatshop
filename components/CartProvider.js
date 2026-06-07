@@ -21,8 +21,8 @@ function writeCart(cart) {
   }
 }
 
-function cartKey(productId, channel) {
-  return `${productId}:${channel}`;
+function cartKey(productId, channel, selectedWeightId = "") {
+  return `${productId}:${channel}:${selectedWeightId}`;
 }
 
 export function CartProvider({ children }) {
@@ -41,11 +41,12 @@ export function CartProvider({ children }) {
   }, [cart, hydrated]);
 
   const value = useMemo(() => {
-    function addToCart(product, channel = "retail") {
+    function addToCart(product, channel = "retail", selection = {}) {
       if (!product) return;
 
       setCart((current) => {
-        const key = cartKey(product.id, channel);
+        const selectedWeight = selection.selectedWeight || null;
+        const key = cartKey(product.id, channel, selectedWeight?.id || "");
         const existing = current.find((item) => item.key === key);
         if (existing) {
           const next = current.map((item) =>
@@ -61,8 +62,16 @@ export function CartProvider({ children }) {
             key,
             productId: product.id,
             channel,
-            qty: minQtyFor(channel),
-            price: channelPrice(product, channel)
+            qty: minQtyFor(channel, product),
+            price: selectedWeight?.price ?? channelPrice(product, channel),
+            sku: product.sku || "",
+            configuration: product.configuration || "",
+            brand: product.brand || "",
+            selectedWeightId: selectedWeight?.id || "",
+            selectedWeight: selectedWeight?.label || "",
+            moq: minQtyFor(channel, product),
+            moqUnit: product.moqUnit || product.packaging || "item",
+            notes: product.notes || ""
           }
         ];
         writeCart(next);
@@ -74,7 +83,7 @@ export function CartProvider({ children }) {
       setCart((current) => {
         const next = current.flatMap((item) => {
           if (item.key !== key) return item;
-          const minQty = minQtyFor(item.channel);
+          const minQty = Number(item.moq || minQtyFor(item.channel));
           if (item.channel !== "reseller" && step < 0 && item.qty <= minQty) return [];
           return { ...item, qty: Math.max(minQty, item.qty + step) };
         });
@@ -102,9 +111,21 @@ export function CartProvider({ children }) {
         const next = current.flatMap((item) => {
           const product = productById.get(item.productId);
           if (!product || !product.channels.includes(item.channel)) return [];
+          const selectedWeight = item.selectedWeightId
+            ? product.weightOptions?.find((option) => option.id === item.selectedWeightId)
+            : null;
+          if (item.selectedWeightId && !selectedWeight) return [];
           return {
             ...item,
-            price: channelPrice(product, item.channel)
+            price: selectedWeight?.price ?? channelPrice(product, item.channel),
+            sku: product.sku || item.sku || "",
+            configuration: product.configuration || "",
+            brand: product.brand || "",
+            selectedWeightId: selectedWeight?.id || "",
+            selectedWeight: selectedWeight?.label || "",
+            moq: minQtyFor(item.channel, product),
+            moqUnit: product.moqUnit || product.packaging || "item",
+            notes: product.notes || ""
           };
         });
 

@@ -30,9 +30,14 @@ export function CartPageClient({ products }) {
                   <div>
                     <strong>{displayName(product)}</strong>
                     <p className="muted">
-                      {item.channel}
-                      {item.channel === "reseller" ? " / minimum 5 packs" : ""} /{" "}
-                      {product.packaging || "pack"}
+                      SKU {item.sku || product.sku || "Pending"} / {item.channel}
+                      {item.configuration ? ` / ${item.configuration}` : ""}
+                      {item.brand ? ` / ${item.brand}` : ""}
+                      {item.selectedWeight ? ` / ${item.selectedWeight}` : ""}
+                    </p>
+                    <p className="muted">
+                      MOQ {item.moq || product.moq} {item.moqUnit || product.moqUnit}
+                      {item.notes ? ` / ${item.notes}` : ""}
                     </p>
                   </div>
                   <div className="qty-control">
@@ -41,7 +46,7 @@ export function CartPageClient({ products }) {
                     <button onClick={() => updateQuantity(item.key, 1)}>+</button>
                   </div>
                   <div className="price">
-                    {item.channel === "wholesale" ? "Quote required" : peso.format(item.price * item.qty)}
+                    {item.price ? peso.format(item.price * item.qty) : "Quote required"}
                   </div>
                   <button className="icon-btn" title="Remove" onClick={() => removeItem(item.key)}>
                     x

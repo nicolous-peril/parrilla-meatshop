@@ -2,9 +2,7 @@ import { peso } from "@/lib/products";
 
 export function CartSummary({ cart }) {
   const hasWholesale = cart.some((item) => item.channel === "wholesale");
-  const subtotal = cart
-    .filter((item) => item.channel !== "wholesale")
-    .reduce((sum, item) => sum + item.price * item.qty, 0);
+  const subtotal = cart.reduce((sum, item) => sum + Number(item.price || 0) * item.qty, 0);
 
   if (hasWholesale) {
     return (

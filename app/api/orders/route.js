@@ -10,6 +10,7 @@ function normalizeCartItem(item) {
   return {
     productId: cleanText(item?.productId),
     channel: cleanText(item?.channel || "retail"),
+    selectedWeightId: cleanText(item?.selectedWeightId),
     qty: Number(item?.qty || 0)
   };
 }
@@ -45,7 +46,6 @@ export async function POST(request) {
   const invalidItem = cart.find((item) => {
     if (!item.productId || !["retail", "reseller", "wholesale"].includes(item.channel)) return true;
     if (!Number.isInteger(item.qty) || item.qty <= 0) return true;
-    if (item.channel === "reseller" && item.qty < 5) return true;
     return false;
   });
 
@@ -55,11 +55,23 @@ export async function POST(request) {
 
   const supabase = createSupabaseClient();
   const productIds = [...new Set(cart.map((item) => item.productId))];
-  const { data: products, error: productError } = await supabase
+  let { data: products, error: productError } = await supabase
     .from("products")
-    .select("*")
+    .select("*, product_weight_options(*)")
     .eq("active", true)
     .in("id", productIds);
+  let legacySchema = false;
+
+  if (productError?.message?.includes("product_weight_options")) {
+    const fallback = await supabase
+      .from("products")
+      .select("*")
+      .eq("active", true)
+      .in("id", productIds);
+    products = fallback.data;
+    productError = fallback.error;
+    legacySchema = true;
+  }
 
   if (productError) {
     return NextResponse.json({ error: "Could not validate products." }, { status: 500 });
@@ -74,7 +86,9 @@ export async function POST(request) {
 
   const invalidChannel = cart.find((item) => {
     const product = productById.get(item.productId);
-    return !Array.isArray(product.channels) || !product.channels.includes(item.channel);
+    return product.sales_channel
+      ? product.sales_channel !== item.channel
+      : !Array.isArray(product.channels) || !product.channels.includes(item.channel);
   });
 
   if (invalidChannel) {
@@ -84,18 +98,43 @@ export async function POST(request) {
     );
   }
 
+  const invalidMoq = cart.find((item) => {
+    const product = productById.get(item.productId);
+    return item.qty < Number(product.moq || (item.channel === "reseller" ? 5 : 1));
+  });
+
+  if (invalidMoq) {
+    return NextResponse.json({ error: "One or more products are below the minimum order quantity." }, { status: 400 });
+  }
+
+  const invalidWeight = cart.find((item) => {
+    const product = productById.get(item.productId);
+    const weights = product.product_weight_options || [];
+    if (!weights.length) return Boolean(item.selectedWeightId);
+    return !weights.some((weight) => weight.id === item.selectedWeightId && weight.status === "available");
+  });
+
+  if (invalidWeight) {
+    return NextResponse.json({ error: "Choose an available weight for each variable-weight product." }, { status: 400 });
+  }
+
   const orderItems = cart.map((item) => {
     const product = productById.get(item.productId);
+    const selectedWeight = (product.product_weight_options || [])
+      .find((weight) => weight.id === item.selectedWeightId);
     const normalizedProduct = {
       id: product.id,
       name: product.name,
+      salesChannel: product.sales_channel,
       resellerPrice: product.reseller_price === null ? null : Number(product.reseller_price),
       price: product.price === null ? null : Number(product.price)
     };
-    const unitPrice = channelPrice(normalizedProduct, item.channel);
-    const amount = item.channel === "wholesale" ? null : unitPrice * item.qty;
+    const unitPrice = selectedWeight
+      ? Number(selectedWeight.price)
+      : channelPrice(normalizedProduct, item.channel);
+    const amount = unitPrice === null ? null : unitPrice * item.qty;
 
-    return {
+    const snapshot = {
       product_id: item.productId,
       name: displayName(normalizedProduct),
       channel: item.channel,
@@ -104,6 +143,16 @@ export async function POST(request) {
       unit_price: unitPrice,
       amount,
       final_price: amount
+    };
+    return legacySchema ? snapshot : {
+      ...snapshot,
+      sku: product.sku || null,
+      selected_configuration: product.configuration || null,
+      selected_brand: product.brand || null,
+      selected_weight: selectedWeight?.weight_label || null,
+      moq: Number(product.moq || 1),
+      moq_unit: product.moq_unit || product.packaging || "item",
+      notes_snapshot: product.notes || null
     };
   });
 

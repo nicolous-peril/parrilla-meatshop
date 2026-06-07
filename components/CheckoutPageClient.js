@@ -10,8 +10,13 @@ function buildOrderMessage(cart, data, products) {
     .map((item) => {
       const product = products.find((candidate) => candidate.id === item.productId);
       if (!product) return "";
-      const amount = item.channel === "wholesale" ? "Quote required" : peso.format(item.price * item.qty);
-      return `- ${displayName(product)} | ${item.channel} | Qty: ${item.qty} | ${product.packaging || "Pack"} | ${amount}`;
+      const amount = item.price ? peso.format(item.price * item.qty) : "Quote required";
+      const selections = [
+        item.configuration && `Configuration: ${item.configuration}`,
+        item.brand && `Brand: ${item.brand}`,
+        item.selectedWeight && `Weight: ${item.selectedWeight}`
+      ].filter(Boolean).join(" | ");
+      return `- ${displayName(product)} | SKU: ${item.sku || product.sku || "Pending"} | ${item.channel} | ${selections} | MOQ: ${item.moq} ${item.moqUnit} | Qty: ${item.qty} | ${amount}`;
     })
     .filter(Boolean);
 
@@ -51,9 +56,9 @@ export function CheckoutPageClient({ products }) {
       return;
     }
 
-    const invalidResellerItem = cart.find((item) => item.channel === "reseller" && item.qty < 5);
-    if (invalidResellerItem) {
-      setConfirmation("Reseller orders require a minimum quantity of 5 per item.");
+    const belowMoqItem = cart.find((item) => item.qty < Number(item.moq || 1));
+    if (belowMoqItem) {
+      setConfirmation(`Each item must meet its minimum order quantity. Please review ${belowMoqItem.sku || "the selected product"}.`);
       setMailto("");
       return;
     }

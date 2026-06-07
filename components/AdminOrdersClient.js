@@ -113,18 +113,7 @@ export function AdminOrdersClient() {
         final_total,
         created_at,
         updated_at,
-        order_items (
-          id,
-          name,
-          channel,
-          qty,
-          packaging,
-          unit_price,
-          amount,
-          availability,
-          actual_weight,
-          final_price
-        )
+        order_items (*)
       `)
       .order("created_at", { ascending: false });
 
@@ -472,19 +461,23 @@ function OrderDetails({ order }) {
         <h3>Items Ordered</h3>
         <div>
           <table>
-            <thead><tr><th>Product</th><th>Quantity</th><th>Unit</th><th>Price</th><th>Total</th></tr></thead>
+            <thead><tr><th>Product</th><th>SKU / Selection</th><th>Quantity</th><th>Unit</th><th>Price</th><th>Total</th></tr></thead>
             <tbody>
               {items.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.name}</td>
+                  <td>{item.name}{item.notes_snapshot ? <small>{item.notes_snapshot}</small> : null}</td>
+                  <td>
+                    <strong>{item.sku || "Legacy"}</strong>
+                    {[item.channel, item.selected_configuration, item.selected_brand, item.selected_weight].filter(Boolean).map((detail) => <small key={detail}>{detail}</small>)}
+                  </td>
                   <td>{item.qty}</td>
-                  <td>{item.packaging || "Pack"}</td>
+                  <td>{item.packaging || "Pack"}{item.moq ? <small>MOQ {item.moq} {item.moq_unit}</small> : null}</td>
                   <td>{item.unit_price === null ? "Quote" : peso.format(Number(item.unit_price))}</td>
                   <td>{item.amount === null ? "Quote" : peso.format(Number(item.final_price ?? item.amount))}</td>
                 </tr>
               ))}
             </tbody>
-            <tfoot><tr><td colSpan="4">Total Amount</td><td>{peso.format(orderTotal(order))}</td></tr></tfoot>
+            <tfoot><tr><td colSpan="5">Total Amount</td><td>{peso.format(orderTotal(order))}</td></tr></tfoot>
           </table>
         </div>
       </section>

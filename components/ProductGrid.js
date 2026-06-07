@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { categoriesFor, productsForChannel, subCategoriesFor } from "@/lib/products";
+import { categoriesFor, groupProductsForChannel, subCategoriesFor } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 
 export function ProductGrid({
@@ -12,8 +12,8 @@ export function ProductGrid({
   showFilters = false
 }) {
   const baseProducts = useMemo(() => {
-    return productsForChannel(products, channel).filter((product) => {
-      const matchesFeatured = !featuredGroup || Boolean(product[featuredGroup]);
+    return groupProductsForChannel(products, channel).filter((product) => {
+      const matchesFeatured = !featuredGroup || product.options.some((option) => Boolean(option[featuredGroup]));
       const haystack = `${product.name} ${product.category} ${product.subCategory || ""} ${product.description || ""}`.toLowerCase();
       const matchesQuery = !query || haystack.includes(query.toLowerCase());
       return matchesFeatured && matchesQuery;
