@@ -46,6 +46,10 @@ function nullableNumber(value) {
   return value === "" || value === null ? null : Number(value);
 }
 
+function cleanString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function slugify(value) {
   return value
     .toLowerCase()
@@ -58,10 +62,23 @@ function toFormProduct(product) {
   return {
     ...EMPTY_PRODUCT,
     ...product,
+    sku: product.sku || "",
+    base_product_key: product.base_product_key || "",
+    name: product.name || "",
+    category: product.category || "",
+    sub_category: product.sub_category || "",
     sales_channel: product.sales_channel || product.channels?.[0] || "retail",
+    configuration: product.configuration || "",
+    packaging: product.packaging || "",
+    pack_size: product.pack_size || "",
     price: product.price ?? "",
+    brand: product.brand || "",
     moq: product.moq ?? 1,
+    moq_unit: product.moq_unit || "item",
     on_hand_qty: product.on_hand_qty ?? 0,
+    notes: product.notes || "",
+    description: product.description || "",
+    image_path: product.image_path || "/images/parrilla logo.png",
     weight_options: (product.product_weight_options || []).map((weight) => ({
       ...EMPTY_WEIGHT,
       ...weight,
@@ -295,13 +312,13 @@ export function AdminProductsClient() {
 
   async function saveProduct(event) {
     event.preventDefault();
-    if (!form.name.trim() || !form.category.trim() || !form.sales_channel) {
+    if (!cleanString(form.name) || !cleanString(form.category) || !form.sales_channel) {
       setMessage("Product name, category, and sales channel are required.");
       return;
     }
 
     const invalidWeight = form.weight_options.find((weight) =>
-      !weight.weight_label.trim() || nullableNumber(weight.price) === null
+      !cleanString(weight.weight_label) || nullableNumber(weight.price) === null
     );
     if (invalidWeight) {
       setMessage("Every weight row needs a weight label and price.");
@@ -310,89 +327,91 @@ export function AdminProductsClient() {
 
     setIsSaving(true);
     setMessage("Saving product...");
-    const internalId = selectedId || [
-      form.sales_channel,
-      slugify(form.name),
-      slugify(form.brand),
-      slugify(form.configuration || form.pack_size),
-      Math.random().toString(36).slice(2, 7)
-    ].filter(Boolean).join("-");
-    const baseProductKey = form.base_product_key.trim() || slugify(form.name.replace(/\s*\(box\)\s*$/i, ""));
-    const payload = {
-      id: internalId,
-      name: form.name.trim(),
-      category: form.category.trim(),
-      sub_category: form.sub_category.trim() || null,
-      channels: [form.sales_channel],
-      sales_channel: form.sales_channel,
-      base_product_key: baseProductKey,
-      configuration: form.configuration.trim() || null,
-      packaging: form.packaging.trim() || null,
-      pack_size: form.pack_size.trim() || null,
-      price: nullableNumber(form.price),
-      reseller_price: null,
-      slab_price: null,
-      kg_per_box: form.pack_size.trim() || null,
-      brand: form.brand.trim() || null,
-      brand_priority: Number(form.brand_priority || 0),
-      moq: Number(form.moq || 1),
-      moq_unit: form.moq_unit.trim() || "item",
-      on_hand_qty: Number(form.on_hand_qty || 0),
-      stock: form.stock,
-      featured: form.featured,
-      default_option: form.default_option,
-      notes: form.notes.trim() || null,
-      description: form.description.trim() || null,
-      image_path: form.image_path || "/images/parrilla logo.png",
-      sort_order: Number(form.sort_order || 0),
-      active: form.active
-    };
 
-    const productQuery = selectedId
-      ? supabase.from("products").update(payload).eq("id", selectedId)
-      : supabase.from("products").insert(payload);
-    const { data: savedProduct, error: productError } = await productQuery.select("id, name, sku").single();
+    try {
+      const internalId = selectedId || [
+        form.sales_channel,
+        slugify(cleanString(form.name)),
+        slugify(cleanString(form.brand)),
+        slugify(cleanString(form.configuration) || cleanString(form.pack_size)),
+        Math.random().toString(36).slice(2, 7)
+      ].filter(Boolean).join("-");
+      const baseProductKey =
+        cleanString(form.base_product_key) ||
+        slugify(cleanString(form.name).replace(/\s*\(box\)\s*$/i, ""));
+      const payload = {
+        id: internalId,
+        name: cleanString(form.name),
+        category: cleanString(form.category),
+        sub_category: cleanString(form.sub_category) || null,
+        channels: [form.sales_channel],
+        sales_channel: form.sales_channel,
+        base_product_key: baseProductKey,
+        configuration: cleanString(form.configuration) || null,
+        packaging: cleanString(form.packaging) || null,
+        pack_size: cleanString(form.pack_size) || null,
+        price: nullableNumber(form.price),
+        reseller_price: null,
+        slab_price: null,
+        kg_per_box: cleanString(form.pack_size) || null,
+        brand: cleanString(form.brand) || null,
+        brand_priority: Number(form.brand_priority || 0),
+        moq: Number(form.moq || 1),
+        moq_unit: cleanString(form.moq_unit) || "item",
+        on_hand_qty: Number(form.on_hand_qty || 0),
+        stock: form.stock,
+        featured: form.featured,
+        default_option: form.default_option,
+        notes: cleanString(form.notes) || null,
+        description: cleanString(form.description) || null,
+        image_path: form.image_path || "/images/parrilla logo.png",
+        sort_order: Number(form.sort_order || 0),
+        active: form.active
+      };
 
-    if (productError) {
-      setMessage(`Could not save product: ${productError.message}`);
-      setIsSaving(false);
-      return;
-    }
+      const productQuery = selectedId
+        ? supabase.from("products").update(payload).eq("id", selectedId)
+        : supabase.from("products").insert(payload);
+      const { data: savedProduct, error: productError } = await productQuery
+        .select("id, name, sku")
+        .single();
 
-    const { error: deleteWeightsError } = await supabase
-      .from("product_weight_options")
-      .delete()
-      .eq("product_id", savedProduct.id);
-    if (deleteWeightsError) {
-      setMessage(`Product saved, but weights could not be updated: ${deleteWeightsError.message}`);
-      setIsSaving(false);
-      return;
-    }
+      if (productError) throw new Error(`Could not save product: ${productError.message}`);
 
-    if (form.weight_options.length) {
-      const { error: weightsError } = await supabase.from("product_weight_options").insert(
-        form.weight_options.map((weight, index) => ({
-          product_id: savedProduct.id,
-          weight_label: weight.weight_label.trim(),
-          weight_value: nullableNumber(weight.weight_value),
-          price: Number(weight.price),
-          on_hand_qty: Number(weight.on_hand_qty || 0),
-          status: weight.status,
-          sort_order: index
-        }))
-      );
-      if (weightsError) {
-        setMessage(`Product saved, but weights could not be added: ${weightsError.message}`);
-        setIsSaving(false);
-        return;
+      const { error: deleteWeightsError } = await supabase
+        .from("product_weight_options")
+        .delete()
+        .eq("product_id", savedProduct.id);
+      if (deleteWeightsError) {
+        throw new Error(`Product saved, but weights could not be updated: ${deleteWeightsError.message}`);
       }
-    }
 
-    setModalOpen(false);
-    setSelectedId(null);
-    setForm(EMPTY_PRODUCT);
-    await loadProducts(`${savedProduct.name} (${savedProduct.sku}) saved successfully.`);
-    setIsSaving(false);
+      if (form.weight_options.length) {
+        const { error: weightsError } = await supabase.from("product_weight_options").insert(
+          form.weight_options.map((weight, index) => ({
+            product_id: savedProduct.id,
+            weight_label: cleanString(weight.weight_label),
+            weight_value: nullableNumber(weight.weight_value),
+            price: Number(weight.price),
+            on_hand_qty: Number(weight.on_hand_qty || 0),
+            status: weight.status,
+            sort_order: index
+          }))
+        );
+        if (weightsError) {
+          throw new Error(`Product saved, but weights could not be added: ${weightsError.message}`);
+        }
+      }
+
+      setModalOpen(false);
+      setSelectedId(null);
+      setForm(EMPTY_PRODUCT);
+      await loadProducts(`${savedProduct.name} (${savedProduct.sku}) saved successfully.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save product.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   async function permanentlyDeleteProduct() {
@@ -545,6 +564,7 @@ export function AdminProductsClient() {
               <button type="button" onClick={closeModal} aria-label="Close product form">×</button>
             </header>
             <form onSubmit={saveProduct}>
+              {message ? <div className="admin-inline-message admin-modal-message">{message}</div> : null}
               <div className="admin-product-upload">
                 <img src={form.image_path || "/images/parrilla logo.png"} alt="Product preview" />
                 <div><strong>Product Image</strong><p>JPG, PNG, or WebP. The preview is saved with this SKU.</p>

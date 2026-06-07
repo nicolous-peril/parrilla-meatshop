@@ -3220,6 +3220,10 @@ body:has(.admin-dashboard-shell) .site-footer {
   padding: 22px;
 }
 
+.admin-modal-message {
+  margin: 0;
+}
+
 .admin-product-upload {
   align-items: center;
   background: #fafafa;
