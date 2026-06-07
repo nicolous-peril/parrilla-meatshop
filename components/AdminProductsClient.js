@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useAdminAuth } from "@/components/AdminAuthProvider";
 import { peso } from "@/lib/products";
 
@@ -60,7 +59,7 @@ function displayPrice(product) {
 }
 
 export function AdminProductsClient() {
-  const { supabase, signOut } = useAdminAuth();
+  const { supabase } = useAdminAuth();
   const [products, setProducts] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [form, setForm] = useState(EMPTY_PRODUCT);
@@ -199,22 +198,21 @@ export function AdminProductsClient() {
   }
 
   return (
-    <section className="section">
-      <div className="section-inner admin-workspace">
-        <div className="admin-subnav">
-          <Link href="/admin">Orders</Link>
-          <Link className="active" href="/admin/products">Products</Link>
-          <span className="admin-subnav-spacer" />
-          <button className="btn btn-secondary" type="button" onClick={() => loadProducts()} disabled={isLoading}>
-            Refresh
-          </button>
-          <button className="btn btn-secondary" type="button" onClick={signOut}>
-            Log out
-          </button>
+    <main className="admin-products-page">
+      <header className="admin-page-header">
+        <div>
+          <h1>Products Management</h1>
+          <p>View, edit, and add products in the Parrilla catalogue</p>
         </div>
+        <button className="admin-primary-action" type="button" onClick={startNewProduct}>
+          <span>+</span>
+          Add Product
+        </button>
+      </header>
 
-        {message ? <div className="notice">{message}</div> : null}
+      {message ? <div className="admin-inline-message">{message}</div> : null}
 
+      <section className="admin-products-content">
         <div className="admin-products-layout">
           <aside className="panel admin-editor">
             <div className="admin-editor-heading">
@@ -223,7 +221,7 @@ export function AdminProductsClient() {
                 <h2>{selectedId ? form.name : "Add a product"}</h2>
               </div>
               {selectedId ? (
-                <button className="btn btn-secondary" type="button" onClick={startNewProduct}>
+                <button className="admin-secondary-action" type="button" onClick={startNewProduct}>
                   Add new
                 </button>
               ) : null}
@@ -342,7 +340,7 @@ export function AdminProductsClient() {
                 </label>
               </fieldset>
 
-              <button className="btn btn-primary" type="submit" disabled={isSaving}>
+              <button className="admin-primary-action" type="submit" disabled={isSaving}>
                 {isSaving ? "Saving..." : selectedId ? "Save changes" : "Add product"}
               </button>
             </form>
@@ -387,7 +385,7 @@ export function AdminProductsClient() {
                         <span>{product.stock === "in-stock" ? "In stock" : "Out of stock"}</span>
                       </div>
                     </div>
-                    <button className="btn btn-secondary" type="button" onClick={() => editProduct(product)}>
+                    <button className="admin-secondary-action" type="button" onClick={() => editProduct(product)}>
                       Edit
                     </button>
                   </article>
@@ -400,7 +398,7 @@ export function AdminProductsClient() {
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
   );
 }

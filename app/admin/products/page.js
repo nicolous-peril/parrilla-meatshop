@@ -5,16 +5,5 @@ export const metadata = {
 };
 
 export default function AdminProductsPage() {
-  return (
-    <main>
-      <section className="page-hero">
-        <div className="section-inner">
-          <p className="eyebrow">Admin products</p>
-          <h1>Products management</h1>
-          <p>Review the full catalogue, update product details, and add new products.</p>
-        </div>
-      </section>
-      <AdminProductsClient />
-    </main>
-  );
+  return <AdminProductsClient />;
 }
