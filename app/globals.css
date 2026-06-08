@@ -2994,17 +2994,17 @@ body:has(.admin-dashboard-shell) .site-footer {
 
 .admin-products-table th:nth-child(1),
 .admin-products-table td:nth-child(1) {
-  width: 6%;
+  width: 9%;
 }
 
 .admin-products-table th:nth-child(2),
 .admin-products-table td:nth-child(2) {
-  width: 16%;
+  width: 17%;
 }
 
 .admin-products-table th:nth-child(3),
 .admin-products-table td:nth-child(3) {
-  width: 10%;
+  width: 9%;
 }
 
 .admin-products-table th:nth-child(4),
@@ -3014,12 +3014,12 @@ body:has(.admin-dashboard-shell) .site-footer {
 
 .admin-products-table th:nth-child(5),
 .admin-products-table td:nth-child(5) {
-  width: 9%;
+  width: 8%;
 }
 
 .admin-products-table th:nth-child(6),
 .admin-products-table td:nth-child(6) {
-  width: 15%;
+  width: 8%;
 }
 
 .admin-products-table th:nth-child(7),
@@ -3029,17 +3029,17 @@ body:has(.admin-dashboard-shell) .site-footer {
 
 .admin-products-table th:nth-child(8),
 .admin-products-table td:nth-child(8) {
-  width: 9%;
+  width: 8%;
 }
 
 .admin-products-table th:nth-child(9),
 .admin-products-table td:nth-child(9) {
-  width: 6%;
+  width: 7%;
 }
 
 .admin-products-table th:nth-child(10),
 .admin-products-table td:nth-child(10) {
-  width: 7%;
+  width: 12%;
 }
 
 .admin-products-table th:nth-child(11),
@@ -3125,6 +3125,25 @@ body:has(.admin-dashboard-shell) .site-footer {
 .admin-stock-label.is-out-of-stock {
   background: #ffe7e7;
   color: #ba2929;
+}
+
+.admin-status-label {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 0.56rem;
+  font-weight: 700;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
+.admin-status-label.is-active {
+  background: #e6f6e8;
+  color: #237b34;
+}
+
+.admin-status-label.is-inactive {
+  background: #ededed;
+  color: #666;
 }
 
 .admin-featured-label {

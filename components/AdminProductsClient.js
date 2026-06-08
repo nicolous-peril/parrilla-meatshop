@@ -32,6 +32,7 @@ const EMPTY_PRODUCT = {
   moq_unit: "item",
   on_hand_qty: 0,
   stock: "in-stock",
+  product_status: "active",
   featured: false,
   default_option: false,
   notes: "",
@@ -76,6 +77,7 @@ function toFormProduct(product) {
     moq: product.moq ?? 1,
     moq_unit: product.moq_unit || "item",
     on_hand_qty: product.on_hand_qty ?? 0,
+    product_status: product.product_status || (product.active === false ? "inactive" : "active"),
     notes: product.notes || "",
     description: product.description || "",
     image_path: product.image_path || "/images/parrilla logo.png",
@@ -87,11 +89,6 @@ function toFormProduct(product) {
       on_hand_qty: weight.on_hand_qty ?? ""
     }))
   };
-}
-
-function formatDate(value) {
-  if (!value) return "Not available";
-  return new Intl.DateTimeFormat("en-PH", { dateStyle: "medium" }).format(new Date(value));
 }
 
 function csvCell(value) {
@@ -115,16 +112,16 @@ function DashboardIcon({ type }) {
 }
 
 const TABLE_COLUMNS = [
-  { key: "image", label: "Image" },
+  { key: "number", label: "Product Number" },
   { key: "name", label: "Product Name" },
-  { key: "sku", label: "SKU / Product ID" },
-  { key: "category", label: "Category" },
-  { key: "channel", label: "Sales Channel" },
-  { key: "pack", label: "Pack Size / Unit" },
   { key: "price", label: "Price" },
-  { key: "stock", label: "Stock Status" },
-  { key: "featured", label: "Featured" },
-  { key: "updated", label: "Last Updated" },
+  { key: "pack", label: "Pack Size" },
+  { key: "subcategory", label: "Subcategory" },
+  { key: "category", label: "Category" },
+  { key: "channel", label: "Channel" },
+  { key: "quantity", label: "On Hand Qty." },
+  { key: "status", label: "Status" },
+  { key: "notes", label: "Notes" },
   { key: "actions", label: "Actions" }
 ];
 
@@ -167,7 +164,7 @@ export function AdminProductsClient() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
-  const [stockFilter, setStockFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [featuredFilter, setFeaturedFilter] = useState("all");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -194,12 +191,13 @@ export function AdminProductsClient() {
       if (query && ![product.name, product.sku, product.id].some((value) => value?.toLowerCase().includes(query))) return false;
       if (categoryFilter !== "all" && product.category !== categoryFilter) return false;
       if (channelFilter !== "all" && product.sales_channel !== channelFilter) return false;
-      if (stockFilter !== "all" && product.stock !== stockFilter) return false;
+      const productStatus = product.product_status || (product.active === false ? "inactive" : "active");
+      if (statusFilter !== "all" && productStatus !== statusFilter) return false;
       if (featuredFilter === "featured" && !product.featured) return false;
       if (featuredFilter === "not-featured" && product.featured) return false;
       return true;
     });
-  }, [categoryFilter, channelFilter, featuredFilter, products, search, stockFilter]);
+  }, [categoryFilter, channelFilter, featuredFilter, products, search, statusFilter]);
 
   const summaryCards = [
     { type: "total", label: "Total SKUs", count: products.length },
@@ -237,6 +235,7 @@ export function AdminProductsClient() {
       setProducts((data || []).map((product) => ({
         ...product,
         sales_channel: product.sales_channel || product.channels?.[0] || "retail",
+        product_status: product.product_status || (product.active === false ? "inactive" : "active"),
         image_path: productImagePath({
           id: product.id,
           name: product.name,
@@ -363,14 +362,14 @@ export function AdminProductsClient() {
         moq: Number(form.moq || 1),
         moq_unit: cleanString(form.moq_unit) || "item",
         on_hand_qty: Number(form.on_hand_qty || 0),
-        stock: form.stock,
+        stock: Number(form.on_hand_qty || 0) > 0 ? "in-stock" : "out-of-stock",
         featured: form.featured,
         default_option: form.default_option,
         notes: cleanString(form.notes) || null,
         description: cleanString(form.description) || null,
         image_path: form.image_path || "/images/parrilla logo.png",
         sort_order: Number(form.sort_order || 0),
-        active: form.active
+        active: form.product_status === "active"
       };
 
       const productQuery = selectedId
@@ -437,7 +436,7 @@ export function AdminProductsClient() {
     setSearch("");
     setCategoryFilter("all");
     setChannelFilter("all");
-    setStockFilter("all");
+    setStatusFilter("all");
     setFeaturedFilter("all");
   }
 
@@ -445,16 +444,16 @@ export function AdminProductsClient() {
     const rows = [
       TABLE_COLUMNS.map((column) => column.label),
       ...visibleProducts.map((product) => [
-        product.image_path,
-        product.name,
         product.sku,
+        product.name,
+        product.price,
+        product.pack_size || product.packaging,
+        product.sub_category,
         product.category,
         product.sales_channel,
-        [product.configuration, product.pack_size || product.packaging].filter(Boolean).join(" / "),
-        product.price,
-        product.stock,
-        product.featured ? "Yes" : "No",
-        product.updated_at,
+        product.on_hand_qty,
+        product.product_status || (product.active === false ? "inactive" : "active"),
+        product.notes,
         ""
       ])
     ];
@@ -505,8 +504,8 @@ export function AdminProductsClient() {
               <option value="all">All Sales Channels</option>
               {CHANNELS.map((channel) => <option key={channel} value={channel}>{displayStatus(channel)}</option>)}
             </select>
-            <select value={stockFilter} onChange={(event) => setStockFilter(event.target.value)}>
-              <option value="all">All Stock Status</option><option value="in-stock">In Stock</option><option value="out-of-stock">Out of Stock</option>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="all">All Statuses</option><option value="active">Active</option><option value="inactive">Inactive</option>
             </select>
             <select value={featuredFilter} onChange={(event) => setFeaturedFilter(event.target.value)}>
               <option value="all">All Featured Status</option><option value="featured">Featured</option><option value="not-featured">Not Featured</option>
@@ -532,23 +531,18 @@ export function AdminProductsClient() {
             <tbody>
               {visibleProducts.map((product) => (
                 <tr className={product.active ? "" : "is-inactive"} key={product.id}>
-                  <td className="admin-product-col-image"><img className="admin-product-table-image" src={product.image_path} alt="" /></td>
+                  <td><code>{product.sku || "Pending"}</code></td>
                   <td className="admin-product-name-cell">
                     <strong>{product.name}</strong>
-                    <small>{product.active ? "Active" : "Inactive"}{product.notes ? ` / ${product.notes}` : ""}</small>
-                  </td>
-                  <td><code>{product.sku || "Pending"}</code></td>
-                  <td>{product.category}</td>
-                  <td><span className={`admin-channel-pill is-${product.sales_channel}`}>{product.sales_channel}</span></td>
-                  <td>
-                    {[product.configuration, product.pack_size || product.packaging].filter(Boolean).join(" / ") || "—"}
-                    {product.brand ? <small>{product.brand}</small> : null}
-                    {product.moq ? <small>MOQ {product.moq} {product.moq_unit}</small> : null}
                   </td>
                   <td><strong>{product.price === null ? "Quote" : peso.format(Number(product.price))}</strong></td>
-                  <td><span className={`admin-stock-label ${product.stock === "in-stock" ? "is-in-stock" : "is-out-of-stock"}`}>{product.stock === "in-stock" ? "In Stock" : "Out of Stock"}</span></td>
-                  <td>{product.featured ? "Yes" : "No"}</td>
-                  <td>{formatDate(product.updated_at)}</td>
+                  <td>{product.pack_size || product.packaging || "—"}</td>
+                  <td>{product.sub_category || "—"}</td>
+                  <td>{product.category}</td>
+                  <td><span className={`admin-channel-pill is-${product.sales_channel}`}>{product.sales_channel}</span></td>
+                  <td>{product.on_hand_qty ?? 0}</td>
+                  <td><span className={`admin-status-label is-${product.product_status || (product.active === false ? "inactive" : "active")}`}>{displayStatus(product.product_status || (product.active === false ? "inactive" : "active"))}</span></td>
+                  <td className="admin-product-notes-cell">{product.notes || "—"}</td>
                   <td><div className="admin-product-actions admin-product-text-actions">
                     <a href={`/product/${product.id}?channel=${product.sales_channel}`} target="_blank" rel="noreferrer">View</a>
                     <button type="button" onClick={() => openEditProduct(product)}>Edit</button>
@@ -602,7 +596,7 @@ export function AdminProductsClient() {
                   <label><span>MOQ</span><input type="number" min="0.001" step="0.001" name="moq" value={form.moq} onChange={updateField} required /></label>
                   <label><span>MOQ Unit</span><input name="moq_unit" value={form.moq_unit} onChange={updateField} placeholder="pack, box, kg" /></label>
                   <label><span>On Hand Qty.</span><input type="number" min="0" step="0.001" name="on_hand_qty" value={form.on_hand_qty} onChange={updateField} /></label>
-                  <label><span>Stock Status</span><select name="stock" value={form.stock} onChange={updateField}><option value="in-stock">In Stock</option><option value="out-of-stock">Out of Stock</option></select></label>
+                  <label><span>Status</span><select name="product_status" value={form.product_status} onChange={updateField}><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
                   <label><span>Display Order / Priority</span><input type="number" name="sort_order" value={form.sort_order} onChange={updateField} /></label>
                 </div>
               </fieldset>
@@ -636,7 +630,6 @@ export function AdminProductsClient() {
               <div className="admin-modal-toggles">
                 <label><input type="checkbox" name="featured" checked={form.featured} onChange={updateField} /><span>Featured Product</span></label>
                 <label><input type="checkbox" name="default_option" checked={form.default_option} onChange={updateField} /><span>Default Brand / Configuration</span></label>
-                <label><input type="checkbox" name="active" checked={form.active} onChange={updateField} /><span>Active Product</span></label>
               </div>
               <footer>
                 <div>
