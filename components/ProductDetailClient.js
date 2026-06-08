@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import { displayName, optionSize, peso, productImagePath } from "@/lib/products";
 
 function sortOptions(options) {
   return [...options].sort((left, right) => {
     if (left.defaultOption !== right.defaultOption) return left.defaultOption ? -1 : 1;
-    if (left.brandPriority !== right.brandPriority) return left.brandPriority - right.brandPriority;
     return optionSize(right.configuration || right.packSize) - optionSize(left.configuration || left.packSize);
   });
 }
@@ -29,15 +28,8 @@ export function ProductDetailClient({ product, channel }) {
   const selectedWeight = weights.find((weight) => weight.id === selectedWeightId) || weights[0] || null;
   const price = selectedWeight?.price ?? selectedProduct.price;
 
-  const brands = useMemo(
-    () => [...new Set(options.map((option) => option.brand).filter(Boolean))],
-    [options]
-  );
-  const sameBrandOptions = selectedProduct.brand
-    ? options.filter((option) => option.brand === selectedProduct.brand)
-    : options.filter((option) => !option.brand);
   const configurations = [...new Set(
-    sameBrandOptions.map((option) => option.configuration || option.packSize).filter(Boolean)
+    options.map((option) => option.configuration || option.packSize).filter(Boolean)
   )];
   const canAdd =
     selectedProduct.stock !== "out-of-stock" &&
@@ -66,27 +58,13 @@ export function ProductDetailClient({ product, channel }) {
         </div>
         <p className="product-meta"><strong>SKU:</strong> {selectedProduct.sku || "Pending"}</p>
 
-        {selectedProduct.displayFields?.brand !== false && brands.length > 1 ? (
-          <label className="product-selector">
-            <span>Brand</span>
-            <select
-              value={selectedProduct.brand}
-              onChange={(event) => selectProduct(sortOptions(options.filter((option) => option.brand === event.target.value))[0])}
-            >
-              {brands.map((brand) => <option key={brand}>{brand}</option>)}
-            </select>
-          </label>
-        ) : selectedProduct.displayFields?.brand !== false && selectedProduct.brand ? (
-          <p className="product-meta"><strong>Brand:</strong> {selectedProduct.brand}</p>
-        ) : null}
-
         {!weights.length && configurations.length > 1 ? (
           <label className="product-selector">
             <span>Configuration</span>
             <select
               value={selectedProduct.configuration || selectedProduct.packSize}
               onChange={(event) => selectProduct(
-                sortOptions(sameBrandOptions.filter((option) =>
+                sortOptions(options.filter((option) =>
                   (option.configuration || option.packSize) === event.target.value
                 ))[0]
               )}

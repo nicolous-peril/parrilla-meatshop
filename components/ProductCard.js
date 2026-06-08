@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import {
   displayName,
@@ -14,7 +14,6 @@ import {
 function bestOption(options) {
   return [...options].sort((left, right) => {
     if (left.defaultOption !== right.defaultOption) return left.defaultOption ? -1 : 1;
-    if (left.brandPriority !== right.brandPriority) return left.brandPriority - right.brandPriority;
     return optionSize(right.configuration || right.packSize) - optionSize(left.configuration || left.packSize);
   })[0];
 }
@@ -35,15 +34,8 @@ export function ProductCard({ product, channel }) {
   const [selectedWeightId, setSelectedWeightId] = useState(weights[0]?.id || "");
   const selectedWeight = weights.find((option) => option.id === selectedWeightId) || weights[0] || null;
 
-  const brands = useMemo(
-    () => [...new Set(options.map((option) => option.brand).filter(Boolean))],
-    [options]
-  );
-  const brandOptions = selectedProduct.brand
-    ? options.filter((option) => option.brand === selectedProduct.brand)
-    : options.filter((option) => !option.brand);
   const configurations = [...new Set(
-    brandOptions.map((option) => option.configuration || option.packSize).filter(Boolean)
+    options.map((option) => option.configuration || option.packSize).filter(Boolean)
   )];
   const item = cart.find((candidate) =>
     candidate.productId === selectedProduct.id &&
@@ -56,15 +48,9 @@ export function ProductCard({ product, channel }) {
   const price = selectedWeight?.price ?? selectedProduct.price;
   const detailsHref = `/product/${selectedProduct.id}?channel=${channel}`;
 
-  function chooseBrand(brand) {
-    const next = bestOption(options.filter((option) => option.brand === brand));
-    setSelectedId(next.id);
-    setSelectedWeightId(availableWeights(next)[0]?.id || "");
-  }
-
   function chooseConfiguration(configuration) {
     const next = bestOption(
-      brandOptions.filter((option) => (option.configuration || option.packSize) === configuration)
+      options.filter((option) => (option.configuration || option.packSize) === configuration)
     );
     setSelectedId(next.id);
     setSelectedWeightId(availableWeights(next)[0]?.id || "");
@@ -86,17 +72,6 @@ export function ProductCard({ product, channel }) {
           {price ? peso.format(price) : priceLabel(selectedProduct, channel)}
           {channel === "wholesale" && !selectedWeight ? " / kg" : ""}
         </div>
-
-        {selectedProduct.displayFields?.brand !== false && brands.length > 1 ? (
-          <label className="product-selector">
-            <span>Brand</span>
-            <select value={selectedProduct.brand} onChange={(event) => chooseBrand(event.target.value)}>
-              {brands.map((brand) => <option key={brand}>{brand}</option>)}
-            </select>
-          </label>
-        ) : selectedProduct.displayFields?.brand !== false && selectedProduct.brand ? (
-          <p className="product-meta"><strong>Brand:</strong> {selectedProduct.brand}</p>
-        ) : null}
 
         {!weights.length && configurations.length > 1 ? (
           <label className="product-selector">

@@ -66,7 +66,6 @@ export function CartProvider({ children }) {
             price: selectedWeight?.price ?? channelPrice(product, channel),
             sku: product.sku || "",
             configuration: product.configuration || "",
-            brand: product.brand || "",
             selectedWeightId: selectedWeight?.id || "",
             selectedWeight: selectedWeight?.label || "",
             moq: minQtyFor(channel, product),
@@ -115,12 +114,12 @@ export function CartProvider({ children }) {
             ? product.weightOptions?.find((option) => option.id === item.selectedWeightId)
             : null;
           if (item.selectedWeightId && !selectedWeight) return [];
+          const { brand: _legacyBrand, ...storedItem } = item;
           return {
-            ...item,
+            ...storedItem,
             price: selectedWeight?.price ?? channelPrice(product, item.channel),
             sku: product.sku || item.sku || "",
             configuration: product.configuration || "",
-            brand: product.brand || "",
             selectedWeightId: selectedWeight?.id || "",
             selectedWeight: selectedWeight?.label || "",
             moq: minQtyFor(item.channel, product),

@@ -13,7 +13,6 @@ function buildOrderMessage(cart, data, products) {
       const amount = item.price ? peso.format(item.price * item.qty) : "Quote required";
       const selections = [
         item.configuration && `Configuration: ${item.configuration}`,
-        item.brand && `Brand: ${item.brand}`,
         item.selectedWeight && `Weight: ${item.selectedWeight}`
       ].filter(Boolean).join(" | ");
       return `- ${displayName(product)} | SKU: ${item.sku || product.sku || "Pending"} | ${item.channel} | ${selections} | MOQ: ${item.moq} ${item.moqUnit} | Qty: ${item.qty} | ${amount}`;

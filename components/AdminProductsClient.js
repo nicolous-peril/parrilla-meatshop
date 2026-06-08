@@ -31,8 +31,6 @@ const EMPTY_PRODUCT = {
   packaging: "",
   pack_size: "",
   price: "",
-  brand: "",
-  brand_priority: 0,
   moq: 1,
   moq_unit: "item",
   moq_text: "1 item",
@@ -45,7 +43,6 @@ const EMPTY_PRODUCT = {
   description: "",
   public_promo: "",
   display_fields: {
-    brand: true,
     moq: true,
     notes: true
   },
@@ -103,8 +100,7 @@ function toFormProduct(product) {
     configuration: product.configuration || "",
     packaging: product.packaging || "",
     pack_size: product.pack_size || "",
-    price: product.price ?? "",
-    brand: product.brand || "",
+    price: product.price === null || product.price === undefined ? "" : Number(product.price).toFixed(2),
     moq: product.moq ?? 1,
     moq_unit: product.moq_unit || "item",
     moq_text: `${product.moq ?? 1} ${product.moq_unit || "item"}`.trim(),
@@ -114,7 +110,6 @@ function toFormProduct(product) {
     description: product.description || "",
     public_promo: displaySettings.publicPromo,
     display_fields: {
-      brand: displaySettings.brand,
       moq: displaySettings.moq,
       notes: displaySettings.notes
     },
@@ -151,18 +146,32 @@ function DashboardIcon({ type }) {
 }
 
 const TABLE_COLUMNS = [
-  { key: "number", label: "Product Number" },
-  { key: "name", label: "Product Name" },
-  { key: "price", label: "Price" },
-  { key: "pack", label: "Pack Size" },
-  { key: "subcategory", label: "Subcategory" },
-  { key: "category", label: "Category" },
-  { key: "channel", label: "Channel" },
-  { key: "quantity", label: "On Hand Qty." },
-  { key: "status", label: "Status" },
-  { key: "notes", label: "Notes" },
+  { key: "number", label: "Product Number", value: (product) => Number(product.sku) || product.sku || "" },
+  { key: "name", label: "Product Name", value: (product) => product.name || "" },
+  { key: "price", label: "Price", value: (product) => Number(product.price ?? -1) },
+  { key: "pack", label: "Pack Size", value: (product) => product.pack_size || product.packaging || "" },
+  { key: "subcategory", label: "Subcategory", value: (product) => product.sub_category || "" },
+  { key: "category", label: "Category", value: (product) => product.category || "" },
+  { key: "channel", label: "Channel", value: (product) => product.sales_channel || "" },
+  { key: "quantity", label: "On Hand Qty.", value: (product) => Number(product.on_hand_qty || 0) },
+  { key: "status", label: "Status", value: (product) => product.product_status || (product.active === false ? "inactive" : "active") },
+  { key: "notes", label: "Notes", value: (product) => product.notes || "" },
   { key: "actions", label: "Actions" }
 ];
+
+function LockIcon() {
+  return (
+    <svg className="admin-readonly-lock" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="5" y="10" width="14" height="10" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+function compareValues(left, right) {
+  if (typeof left === "number" && typeof right === "number") return left - right;
+  return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
+}
 
 async function optimizeImage(file) {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
@@ -205,6 +214,7 @@ export function AdminProductsClient() {
   const [channelFilter, setChannelFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [featuredFilter, setFeaturedFilter] = useState("all");
+  const [sort, setSort] = useState({ key: "number", direction: "asc" });
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -231,7 +241,7 @@ export function AdminProductsClient() {
   );
   const visibleProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return products.filter((product) => {
+    const filtered = products.filter((product) => {
       if (query && ![product.name, product.sku, product.id].some((value) => value?.toLowerCase().includes(query))) return false;
       if (categoryFilter !== "all" && product.category !== categoryFilter) return false;
       if (channelFilter !== "all" && product.sales_channel !== channelFilter) return false;
@@ -241,7 +251,13 @@ export function AdminProductsClient() {
       if (featuredFilter === "not-featured" && product.featured) return false;
       return true;
     });
-  }, [categoryFilter, channelFilter, featuredFilter, products, search, statusFilter]);
+    const column = TABLE_COLUMNS.find((candidate) => candidate.key === sort.key);
+    if (!column?.value) return filtered;
+    return [...filtered].sort((left, right) => {
+      const result = compareValues(column.value(left), column.value(right));
+      return sort.direction === "asc" ? result : -result;
+    });
+  }, [categoryFilter, channelFilter, featuredFilter, products, search, sort, statusFilter]);
 
   const summaryCards = [
     { type: "total", label: "Total SKUs", count: products.length },
@@ -328,6 +344,23 @@ export function AdminProductsClient() {
         }))
       };
     });
+  }
+
+  function normalizePrice() {
+    setForm((current) => {
+      if (current.price === "") return current;
+      const value = Number(current.price);
+      return Number.isFinite(value) ? { ...current, price: value.toFixed(2) } : current;
+    });
+  }
+
+  function toggleSort(key) {
+    const column = TABLE_COLUMNS.find((candidate) => candidate.key === key);
+    if (!column?.value) return;
+    setSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc"
+    }));
   }
 
   function updateWeight(index, field, value) {
@@ -426,7 +459,6 @@ export function AdminProductsClient() {
       const internalId = selectedId || [
         form.sales_channel,
         slugify(cleanString(form.name)),
-        slugify(cleanString(form.brand)),
         slugify(cleanString(form.configuration) || cleanString(form.pack_size)),
         Math.random().toString(36).slice(2, 7)
       ].filter(Boolean).join("-");
@@ -449,8 +481,6 @@ export function AdminProductsClient() {
         reseller_price: null,
         slab_price: null,
         kg_per_box: cleanString(form.pack_size) || null,
-        brand: cleanString(form.brand) || null,
-        brand_priority: Number(form.brand_priority || 0),
         moq: parsedMoq.moq,
         moq_unit: parsedMoq.unit,
         on_hand_qty: Math.max(0, Math.trunc(Number(form.on_hand_qty || 0))),
@@ -568,7 +598,7 @@ export function AdminProductsClient() {
         </div>
         <div className="admin-products-header-actions">
           <label className="admin-order-search">
-            <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search product name or SKU..." />
+            <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search a product" />
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 5 5" /></svg>
           </label>
           <button className="admin-primary-action" type="button" onClick={openNewProduct}><span>+</span>Add New Product</button>
@@ -617,7 +647,23 @@ export function AdminProductsClient() {
             <thead>
               <tr>
                 {TABLE_COLUMNS.map((column) => (
-                  <th className={`admin-product-col-${column.key}`} key={column.key}>{column.label}</th>
+                  <th
+                    aria-sort={sort.key === column.key ? (sort.direction === "asc" ? "ascending" : "descending") : undefined}
+                    className={`admin-product-col-${column.key}`}
+                    key={column.key}
+                  >
+                    {column.value ? (
+                      <button
+                        className={`admin-table-sort ${sort.key === column.key ? "is-active" : ""}`}
+                        type="button"
+                        onClick={() => toggleSort(column.key)}
+                        aria-label={`Sort by ${column.label}`}
+                      >
+                        <span>{column.label}</span>
+                        <span aria-hidden="true">{sort.key === column.key ? (sort.direction === "asc" ? "▲" : "▼") : "↕"}</span>
+                      </button>
+                    ) : column.label}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -633,7 +679,7 @@ export function AdminProductsClient() {
                   <td>{product.sub_category || "—"}</td>
                   <td>{product.category}</td>
                   <td><span className={`admin-channel-pill is-${product.sales_channel}`}>{product.sales_channel}</span></td>
-                  <td>{product.on_hand_qty ?? 0}</td>
+                  <td className={Number(product.on_hand_qty || 0) === 0 ? "admin-zero-stock" : ""}>{product.on_hand_qty ?? 0}</td>
                   <td><span className={`admin-status-label is-${product.product_status || (product.active === false ? "inactive" : "active")}`}>{displayStatus(product.product_status || (product.active === false ? "inactive" : "active"))}</span></td>
                   <td className="admin-product-notes-cell">{product.notes || "—"}</td>
                   <td><div className="admin-product-actions admin-product-text-actions">
@@ -665,13 +711,12 @@ export function AdminProductsClient() {
                     <img src={form.image_path || "/images/parrilla logo.png"} alt="Product preview" />
                     <button type="button" onClick={() => setImageModalOpen(true)}>Upload an image</button>
                   </div>
-                  <div className="admin-product-form-grid admin-product-form-grid-two">
-                    <label><span>Product Number</span><input value={form.sku || "Generated automatically"} disabled /></label>
+                  <div className="admin-product-form-grid admin-product-form-grid-three">
+                    <label className="admin-system-field"><span>Product Number <LockIcon /></span><input value={form.sku || "Generated automatically"} disabled /></label>
                     <label><span>Product Name</span><input name="name" value={form.name} onChange={updateField} required /></label>
-                    <label><span>Brand <small>Optional</small></span><input name="brand" value={form.brand} onChange={updateField} /></label>
                     <label><span>Category</span><select name="category" value={form.category} onChange={updateField} required><option value="">Select category</option>{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
                     <label><span>Sub-Category</span><select name="sub_category" value={form.sub_category} onChange={updateField}><option value="">Select sub-category</option>{subCategories.map((subCategory) => <option key={subCategory}>{subCategory}</option>)}</select></label>
-                    <label><span>Channel</span><input value={displayStatus(form.sales_channel)} disabled /></label>
+                    <label className="admin-system-field"><span>Channel <LockIcon /></span><input value={displayStatus(form.sales_channel)} disabled /></label>
                     <label><span>Status</span><select name="product_status" value={form.product_status} onChange={updateField}><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
                     <label className="admin-form-field-wide"><span>Notes</span><textarea name="notes" value={form.notes} onChange={updateField} rows="3" /></label>
                   </div>
@@ -681,7 +726,7 @@ export function AdminProductsClient() {
               <fieldset className="admin-product-form-section">
                 <legend>Pricing &amp; Inventory</legend>
                 <div className="admin-product-form-grid admin-product-form-grid-four">
-                  <label><span>Price</span><input type="number" min="0" step="0.01" name="price" value={form.price} onChange={updateField} /></label>
+                  <label><span>Price</span><input type="number" min="0" step="0.01" name="price" value={form.price} onChange={updateField} onBlur={normalizePrice} /></label>
                   <label><span>Pack Size</span><input name="pack_size" value={form.pack_size} onChange={updateField} /></label>
                   <label><span>On Hand Qty.</span><input type="number" min="0" step="1" name="on_hand_qty" value={form.on_hand_qty} onChange={updateField} /></label>
                   <label><span>MOQ</span><input name="moq_text" value={form.moq_text} onChange={updateField} placeholder="e.g. 1 pack or 5 kg" /></label>
@@ -712,7 +757,6 @@ export function AdminProductsClient() {
                 <p className="admin-checklist-help">Checked details are displayed on customer-facing product pages.</p>
                 <div className="admin-product-checklist">
                   {["Product Name", "Price", "Pack Size"].map((label) => <label className="is-required" key={label}><input type="checkbox" checked disabled /><span>{label}</span></label>)}
-                  <label><input type="checkbox" name="brand" checked={form.display_fields.brand} onChange={updateDisplayField} /><span>Brand</span></label>
                   <label><input type="checkbox" name="moq" checked={form.display_fields.moq} onChange={updateDisplayField} /><span>MOQ</span></label>
                   <label><input type="checkbox" name="notes" checked={form.display_fields.notes} onChange={updateDisplayField} /><span>Notes</span></label>
                 </div>

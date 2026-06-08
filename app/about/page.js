@@ -44,7 +44,7 @@ export default function AboutPage() {
           </div>
           <div className="feature">
             <strong>Wholesale boxes</strong>
-            <p>Box supply with brand and estimated weight details.</p>
+            <p>Box supply with estimated weight details.</p>
           </div>
           <div className="feature">
             <strong>Reseller support</strong>

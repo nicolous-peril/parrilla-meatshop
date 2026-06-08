@@ -468,7 +468,7 @@ function OrderDetails({ order }) {
                   <td>{item.name}{item.notes_snapshot ? <small>{item.notes_snapshot}</small> : null}</td>
                   <td>
                     <strong>{item.sku || "Legacy"}</strong>
-                    {[item.channel, item.selected_configuration, item.selected_brand, item.selected_weight].filter(Boolean).map((detail) => <small key={detail}>{detail}</small>)}
+                    {[item.channel, item.selected_configuration, item.selected_weight].filter(Boolean).map((detail) => <small key={detail}>{detail}</small>)}
                   </td>
                   <td>{item.qty}</td>
                   <td>{item.packaging || "Pack"}{item.moq ? <small>MOQ {item.moq} {item.moq_unit}</small> : null}</td>

@@ -17,7 +17,7 @@ export default async function SearchPage({ searchParams }) {
         <div className="section-inner">
           <p className="eyebrow">Search</p>
           <h1>{query ? `Search results for "${query}"` : "Search the catalog"}</h1>
-          <p>Find retail packs, reseller items, wholesale boxes, brands, and promos.</p>
+          <p>Find retail packs, reseller items, wholesale boxes, and promos.</p>
         </div>
       </section>
       <section className="section">

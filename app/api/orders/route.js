@@ -148,7 +148,6 @@ export async function POST(request) {
       ...snapshot,
       sku: product.sku || null,
       selected_configuration: product.configuration || null,
-      selected_brand: product.brand || null,
       selected_weight: selectedWeight?.weight_label || null,
       moq: Number(product.moq || 1),
       moq_unit: product.moq_unit || product.packaging || "item",

@@ -18,7 +18,7 @@ export function SearchForm({ className = "toolbar", initialValue = "", compact =
       <input
         className={compact ? "" : "field"}
         type="search"
-        placeholder={compact ? "Search" : "Search meats, cuts, brands"}
+        placeholder={compact ? "Search" : "Search meats and cuts"}
         aria-label="Search"
         required
         value={term}

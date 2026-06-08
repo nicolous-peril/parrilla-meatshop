@@ -50,7 +50,7 @@ export default async function HomePage() {
             </Link>
             <Link className="category-tile" href="/wholesale">
               <strong>Wholesale</strong>
-              <span>Box orders with slab meats and branded frozen supply.</span>
+              <span>Box orders with slab meats and frozen supply.</span>
             </Link>
             <Link className="category-tile" href="/reseller">
               <strong>Reseller</strong>
