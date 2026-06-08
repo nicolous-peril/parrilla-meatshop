@@ -461,7 +461,7 @@ function OrderDetails({ order }) {
         <h3>Items Ordered</h3>
         <div>
           <table>
-            <thead><tr><th>Product</th><th>SKU / Selection</th><th>Quantity</th><th>Unit</th><th>Price</th><th>Total</th></tr></thead>
+            <thead><tr><th>Product</th><th>Product ID / Selection</th><th>Quantity</th><th>Unit</th><th>Price</th><th>Total</th></tr></thead>
             <tbody>
               {items.map((item) => (
                 <tr key={item.id}>

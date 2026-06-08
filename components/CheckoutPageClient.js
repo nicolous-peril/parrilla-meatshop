@@ -16,7 +16,7 @@ function buildOrderMessage(cart, data, products) {
         item.configuration && `Configuration: ${item.configuration}`,
         item.selectedWeight && `Weight: ${item.selectedWeight}`
       ].filter(Boolean).join(" | ");
-      return `- ${displayName(product)} | SKU: ${item.sku || product.sku || "Pending"} | ${item.channel} | ${selections} | MOQ: ${item.moq} ${item.moqUnit} | Qty: ${item.qty} | ${amount}`;
+      return `- ${displayName(product)} | Product ID: ${item.sku || product.sku || "Pending"} | ${item.channel} | ${selections} | MOQ: ${item.moq} ${item.moqUnit} | Qty: ${item.qty} | ${amount}`;
     })
     .filter(Boolean);
 

@@ -130,6 +130,7 @@ function toFormProduct(product) {
     moq_text: `${product.moq ?? 1} ${product.moq_unit || "item"}`.trim(),
     on_hand_qty: weights.length ? weightInventoryTotal(weights) : (product.on_hand_qty ?? 0),
     product_status: product.product_status || (product.active === false ? "inactive" : "active"),
+    featured: Boolean(product.featured || product.home_retail_featured || product.home_wholesale_featured),
     notes: product.notes || "",
     description: product.description || "",
     public_promo: displaySettings.publicPromo,
@@ -163,7 +164,7 @@ function DashboardIcon({ type }) {
 }
 
 const TABLE_COLUMNS = [
-  { key: "number", label: "Product Number", value: (product) => Number(product.sku) || product.sku || "" },
+  { key: "number", label: "Product ID", value: (product) => Number(product.sku) || product.sku || "" },
   { key: "name", label: "Product Name", value: (product) => product.name || "" },
   { key: "price", label: "Price", value: (product) => Number(product.price ?? -1) },
   { key: "pack", label: "Pack Size", value: (product) => product.pack_size || product.packaging || "" },
@@ -173,6 +174,7 @@ const TABLE_COLUMNS = [
   { key: "quantity", label: "On Hand Qty.", value: (product) => Number(product.on_hand_qty || 0) },
   { key: "status", label: "Status", value: (product) => product.product_status || (product.active === false ? "inactive" : "active") },
   { key: "notes", label: "Notes", value: (product) => product.notes || "" },
+  { key: "featured", label: "Featured", value: (product) => Boolean(product.featured) },
   { key: "actions", label: "Actions" }
 ];
 
@@ -227,12 +229,13 @@ export function AdminProductsClient() {
   const [selectedId, setSelectedId] = useState(null);
   const [deleteProduct, setDeleteProduct] = useState(null);
   const [form, setForm] = useState(EMPTY_PRODUCT);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [featuredFilter, setFeaturedFilter] = useState("all");
-  const [sort, setSort] = useState({ key: "number", direction: "asc" });
+  const [sort, setSort] = useState(null);
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -241,6 +244,9 @@ export function AdminProductsClient() {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [packConfigDirty, setPackConfigDirty] = useState(false);
   const [packToast, setPackToast] = useState("");
+  const [savingFeaturedId, setSavingFeaturedId] = useState("");
+  const [draggingId, setDraggingId] = useState("");
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   useEffect(() => {
     loadProducts();
@@ -253,6 +259,11 @@ export function AdminProductsClient() {
 
   useEffect(() => () => clearTimeout(packToastTimerRef.current), []);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 220);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   const categories = useMemo(
     () => [...new Set(products.map((product) => product.category).filter(Boolean))].sort(),
     [products]
@@ -264,25 +275,50 @@ export function AdminProductsClient() {
   const visibleProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
     const filtered = products.filter((product) => {
-      if (query && ![product.name, product.sku, product.id].some((value) => value?.toLowerCase().includes(query))) return false;
+      const productStatus = product.product_status || (product.active === false ? "inactive" : "active");
+      const searchableValues = [
+        product.sku,
+        product.id,
+        product.name,
+        product.category,
+        product.sub_category,
+        product.sales_channel,
+        productStatus,
+        product.notes,
+        product.price,
+        product.pack_size,
+        product.packaging,
+        product.on_hand_qty,
+        product.moq,
+        product.moq_unit,
+        `${product.moq || ""} ${product.moq_unit || ""}`
+      ];
+      if (query && !searchableValues.some((value) => String(value ?? "").toLowerCase().includes(query))) return false;
       if (categoryFilter !== "all" && product.category !== categoryFilter) return false;
       if (channelFilter !== "all" && product.sales_channel !== channelFilter) return false;
-      const productStatus = product.product_status || (product.active === false ? "inactive" : "active");
       if (statusFilter !== "all" && productStatus !== statusFilter) return false;
       if (featuredFilter === "featured" && !product.featured) return false;
       if (featuredFilter === "not-featured" && product.featured) return false;
       return true;
     });
-    const column = TABLE_COLUMNS.find((candidate) => candidate.key === sort.key);
+    const column = TABLE_COLUMNS.find((candidate) => candidate.key === sort?.key);
     if (!column?.value) return filtered;
     return [...filtered].sort((left, right) => {
       const result = compareValues(column.value(left), column.value(right));
-      return sort.direction === "asc" ? result : -result;
+      return sort?.direction === "asc" ? result : -result;
     });
   }, [categoryFilter, channelFilter, featuredFilter, products, search, sort, statusFilter]);
 
+  const canReorder =
+    !sort &&
+    !search &&
+    categoryFilter === "all" &&
+    channelFilter === "all" &&
+    statusFilter === "all" &&
+    featuredFilter === "all";
+
   const summaryCards = [
-    { type: "total", label: "Total SKUs", count: products.length },
+    { type: "total", label: "Total Products", count: products.length },
     { type: "active", label: "Active Products", count: products.filter((product) => product.active).length },
     { type: "stock", label: "Out of Stock", count: products.filter((product) => product.stock === "out-of-stock").length },
     ...CHANNELS.map((channel) => ({
@@ -316,6 +352,7 @@ export function AdminProductsClient() {
     } else {
       setProducts((data || []).map((product) => ({
         ...product,
+        featured: Boolean(product.featured || product.home_retail_featured || product.home_wholesale_featured),
         sales_channel: product.sales_channel || product.channels?.[0] || "retail",
         product_status: product.product_status || (product.active === false ? "inactive" : "active"),
         image_path: productImagePath({
@@ -389,10 +426,90 @@ export function AdminProductsClient() {
   function toggleSort(key) {
     const column = TABLE_COLUMNS.find((candidate) => candidate.key === key);
     if (!column?.value) return;
-    setSort((current) => ({
-      key,
-      direction: current.key === key && current.direction === "asc" ? "desc" : "asc"
-    }));
+    setSort((current) => {
+      if (!current || current.key !== key) return { key, direction: "asc" };
+      if (current.direction === "asc") return { key, direction: "desc" };
+      return null;
+    });
+  }
+
+  async function toggleFeatured(product, featured) {
+    setSavingFeaturedId(product.id);
+    setMessage("");
+    const previous = product.featured;
+    setProducts((current) => current.map((item) =>
+      item.id === product.id ? { ...item, featured } : item
+    ));
+    if (selectedId === product.id) {
+      setForm((current) => ({ ...current, featured }));
+    }
+
+    const { error } = await supabase
+      .from("products")
+      .update({
+        featured,
+        home_retail_featured: featured && product.sales_channel === "retail",
+        home_wholesale_featured: featured && product.sales_channel === "wholesale"
+      })
+      .eq("id", product.id);
+
+    if (error) {
+      setProducts((current) => current.map((item) =>
+        item.id === product.id ? { ...item, featured: previous } : item
+      ));
+      if (selectedId === product.id) {
+        setForm((current) => ({ ...current, featured: previous }));
+      }
+      setMessage(`Could not update Featured: ${error.message}`);
+    } else {
+      setMessage(`${product.name} ${featured ? "added to" : "removed from"} Featured Products.`);
+    }
+    setSavingFeaturedId("");
+  }
+
+  async function persistProductOrder(nextProducts) {
+    setIsSavingOrder(true);
+    setMessage("Saving custom product order...");
+    const ordered = nextProducts.map((product, index) => ({ ...product, sort_order: index }));
+    setProducts(ordered);
+
+    const results = await Promise.all(ordered.map((product) =>
+      supabase.from("products").update({ sort_order: product.sort_order }).eq("id", product.id)
+    ));
+    const failed = results.find((result) => result.error);
+
+    if (failed) {
+      await loadProducts(`Could not save product order: ${failed.error.message}`);
+    } else {
+      setMessage("Custom product order saved.");
+    }
+    setIsSavingOrder(false);
+  }
+
+  function moveProduct(productId, direction) {
+    if (!canReorder || isSavingOrder) return;
+    const currentIndex = products.findIndex((product) => product.id === productId);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= products.length) return;
+    const nextProducts = [...products];
+    const [moved] = nextProducts.splice(currentIndex, 1);
+    nextProducts.splice(nextIndex, 0, moved);
+    persistProductOrder(nextProducts);
+  }
+
+  function dropProduct(targetId) {
+    if (!canReorder || !draggingId || draggingId === targetId) {
+      setDraggingId("");
+      return;
+    }
+    const nextProducts = [...products];
+    const sourceIndex = nextProducts.findIndex((product) => product.id === draggingId);
+    const targetIndex = nextProducts.findIndex((product) => product.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    const [moved] = nextProducts.splice(sourceIndex, 1);
+    nextProducts.splice(targetIndex, 0, moved);
+    setDraggingId("");
+    persistProductOrder(nextProducts);
   }
 
   function updateWeight(index, field, value) {
@@ -525,12 +642,16 @@ export function AdminProductsClient() {
         on_hand_qty: calculatedOnHand,
         stock: calculatedOnHand > 0 ? "in-stock" : "out-of-stock",
         featured: form.featured,
+        home_retail_featured: form.featured && form.sales_channel === "retail",
+        home_wholesale_featured: form.featured && form.sales_channel === "wholesale",
         default_option: form.default_option,
         notes: cleanString(form.notes) || null,
         description: cleanString(form.description) || null,
         promo: encodeProductDisplaySettings(form.display_fields, form.public_promo),
         image_path: form.image_path || "/images/parrilla logo.png",
-        sort_order: Number(form.sort_order || 0),
+        sort_order: selectedId
+          ? Number(form.sort_order || 0)
+          : Math.max(-1, ...products.map((product) => Number(product.sort_order ?? -1))) + 1,
         active: form.product_status === "active"
       };
 
@@ -597,6 +718,7 @@ export function AdminProductsClient() {
   }
 
   function resetFilters() {
+    setSearchInput("");
     setSearch("");
     setCategoryFilter("all");
     setChannelFilter("all");
@@ -618,6 +740,7 @@ export function AdminProductsClient() {
         product.on_hand_qty,
         product.product_status || (product.active === false ? "inactive" : "active"),
         product.notes,
+        product.featured ? "Yes" : "No",
         ""
       ])
     ];
@@ -635,11 +758,11 @@ export function AdminProductsClient() {
       <header className="admin-page-header admin-products-header">
         <div>
           <h1>Products Management</h1>
-          <p>Manage channel SKUs, configurations, prices, inventory, and product details.</p>
+          <p>Manage product IDs, configurations, prices, inventory, and product details.</p>
         </div>
         <div className="admin-products-header-actions">
           <label className="admin-order-search">
-            <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search a product" />
+            <input type="search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search a product" />
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 5 5" /></svg>
           </label>
           <button className="admin-primary-action" type="button" onClick={openNewProduct}><span>+</span>Add New Product</button>
@@ -683,6 +806,16 @@ export function AdminProductsClient() {
             </button>
           </div>
         </div>
+        <div className="admin-product-order-help">
+          <span>
+            {sort
+              ? "Column sorting is active. Click the same header again to return to custom order."
+              : canReorder
+                ? "Custom order active. Drag rows to reorder products."
+                : "Clear search and filters to edit the custom product order."}
+          </span>
+          {isSavingOrder ? <strong>Saving order...</strong> : null}
+        </div>
 
         <div className="admin-products-table-wrap">
           <table className="admin-products-table">
@@ -690,19 +823,19 @@ export function AdminProductsClient() {
               <tr>
                 {TABLE_COLUMNS.map((column) => (
                   <th
-                    aria-sort={sort.key === column.key ? (sort.direction === "asc" ? "ascending" : "descending") : undefined}
+                    aria-sort={sort?.key === column.key ? (sort.direction === "asc" ? "ascending" : "descending") : undefined}
                     className={`admin-product-col-${column.key}`}
                     key={column.key}
                   >
                     {column.value ? (
                       <button
-                        className={`admin-table-sort ${sort.key === column.key ? "is-active" : ""}`}
+                        className={`admin-table-sort ${sort?.key === column.key ? "is-active" : ""}`}
                         type="button"
                         onClick={() => toggleSort(column.key)}
                         aria-label={`Sort by ${column.label}`}
                       >
                         <span>{column.label}</span>
-                        <span aria-hidden="true">{sort.key === column.key ? (sort.direction === "asc" ? "▲" : "▼") : "↕"}</span>
+                        <span aria-hidden="true">{sort?.key === column.key ? (sort.direction === "asc" ? "▲" : "▼") : "↕"}</span>
                       </button>
                     ) : column.label}
                   </th>
@@ -710,9 +843,26 @@ export function AdminProductsClient() {
               </tr>
             </thead>
             <tbody>
-              {visibleProducts.map((product) => (
-                <tr className={product.active ? "" : "is-inactive"} key={product.id}>
-                  <td><code>{product.sku || "Pending"}</code></td>
+              {visibleProducts.map((product, index) => (
+                <tr
+                  className={`${product.active ? "" : "is-inactive"} ${draggingId === product.id ? "is-dragging" : ""}`}
+                  draggable={canReorder && !isSavingOrder}
+                  key={product.id}
+                  onDragStart={() => setDraggingId(product.id)}
+                  onDragEnd={() => setDraggingId("")}
+                  onDragOver={(event) => canReorder && event.preventDefault()}
+                  onDrop={() => dropProduct(product.id)}
+                >
+                  <td>
+                    <div className="admin-product-id-cell">
+                      <span className="admin-row-drag-handle" aria-hidden="true">⋮⋮</span>
+                      <code>{product.sku || "Pending"}</code>
+                      <span className="admin-row-order-controls">
+                        <button type="button" onClick={() => moveProduct(product.id, -1)} disabled={!canReorder || index === 0 || isSavingOrder} aria-label={`Move ${product.name} up`}>↑</button>
+                        <button type="button" onClick={() => moveProduct(product.id, 1)} disabled={!canReorder || index === visibleProducts.length - 1 || isSavingOrder} aria-label={`Move ${product.name} down`}>↓</button>
+                      </span>
+                    </div>
+                  </td>
                   <td className="admin-product-name-cell">
                     <strong>{product.name}</strong>
                   </td>
@@ -724,6 +874,15 @@ export function AdminProductsClient() {
                   <td className={Number(product.on_hand_qty || 0) === 0 ? "admin-zero-stock" : ""}>{product.on_hand_qty ?? 0}</td>
                   <td><span className={`admin-status-label is-${product.product_status || (product.active === false ? "inactive" : "active")}`}>{displayStatus(product.product_status || (product.active === false ? "inactive" : "active"))}</span></td>
                   <td className="admin-product-notes-cell">{product.notes || "—"}</td>
+                  <td className="admin-featured-checkbox-cell">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(product.featured)}
+                      disabled={savingFeaturedId === product.id}
+                      onChange={(event) => toggleFeatured(product, event.target.checked)}
+                      aria-label={`${product.featured ? "Remove" : "Add"} ${product.name} ${product.featured ? "from" : "to"} Featured Products`}
+                    />
+                  </td>
                   <td><div className="admin-product-actions admin-product-text-actions">
                     <a href={`/product/${product.id}?channel=${product.sales_channel}`} target="_blank" rel="noreferrer">View</a>
                     <button type="button" onClick={() => openEditProduct(product)}>Edit</button>
@@ -754,7 +913,7 @@ export function AdminProductsClient() {
                     <button type="button" onClick={() => setImageModalOpen(true)}>Upload an image</button>
                   </div>
                   <div className="admin-product-form-grid admin-product-form-grid-three">
-                    <label className="admin-system-field"><span>Product Number <LockIcon /></span><input value={form.sku || "Generated automatically"} disabled /></label>
+                    <label className="admin-system-field"><span>Product ID <LockIcon /></span><input value={form.sku || "Generated automatically"} disabled /></label>
                     <label><span>Product Name</span><input name="name" value={form.name} onChange={updateField} required /></label>
                     <label><span>Category</span><select name="category" value={form.category} onChange={updateField} required><option value="">Select category</option>{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
                     <label><span>Sub-Category</span><select name="sub_category" value={form.sub_category} onChange={updateField}><option value="">Select sub-category</option>{subCategories.map((subCategory) => <option key={subCategory}>{subCategory}</option>)}</select></label>
@@ -768,7 +927,13 @@ export function AdminProductsClient() {
               <fieldset className="admin-product-form-section">
                 <legend>Pricing &amp; Inventory</legend>
                 <div className="admin-product-form-grid admin-product-form-grid-four">
-                  <label><span>Price</span><input type="number" min="0" step="0.01" name="price" value={form.price} onChange={updateField} onBlur={normalizePrice} /></label>
+                  <label>
+                    <span>Price</span>
+                    <div className="admin-price-input">
+                      <span aria-hidden="true">₱</span>
+                      <input type="number" min="0" step="0.01" name="price" value={form.price} onChange={updateField} onBlur={normalizePrice} />
+                    </div>
+                  </label>
                   <label><span>Pack Size</span><input name="pack_size" value={form.pack_size} onChange={updateField} /></label>
                   <label className={form.weight_options.length ? "admin-system-field" : ""}>
                     <span>On Hand Qty. {form.weight_options.length ? <LockIcon /> : null}</span>

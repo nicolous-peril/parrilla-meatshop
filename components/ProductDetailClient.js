@@ -65,7 +65,7 @@ export function ProductDetailClient({ product, channel }) {
           {channel === "wholesale" && !selectedWeight ? " / kg" : ""}
         </div>
         {!canAdd ? <span className="product-stock-badge is-out">Out of Stock</span> : null}
-        <p className="product-meta"><strong>SKU:</strong> {selectedProduct.sku || "Pending"}</p>
+        <p className="product-meta"><strong>Product ID:</strong> {selectedProduct.sku || "Pending"}</p>
 
         {!weights.length && configurations.length > 1 ? (
           <label className="product-selector">

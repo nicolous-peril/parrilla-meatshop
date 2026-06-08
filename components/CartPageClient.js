@@ -30,7 +30,7 @@ export function CartPageClient({ products }) {
                   <div>
                     <strong>{displayName(product)}</strong>
                     <p className="muted">
-                      SKU {item.sku || product.sku || "Pending"} / {item.channel}
+                      Product ID {item.sku || product.sku || "Pending"} / {item.channel}
                       {item.configuration ? ` / ${item.configuration}` : ""}
                       {item.selectedWeight ? ` / ${item.selectedWeight}` : ""}
                     </p>

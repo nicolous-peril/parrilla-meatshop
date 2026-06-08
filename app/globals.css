@@ -3034,44 +3034,58 @@ body:has(.admin-dashboard-shell) .site-footer {
   font-weight: 800;
 }
 
+.admin-product-order-help {
+  align-items: center;
+  color: #777;
+  display: flex;
+  font-size: 0.62rem;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 0 2px 10px;
+}
+
+.admin-product-order-help strong {
+  color: #a92721;
+}
+
 .admin-products-table th:nth-child(1),
 .admin-products-table td:nth-child(1) {
-  width: 9%;
+  width: 8%;
 }
 
 .admin-products-table th:nth-child(2),
 .admin-products-table td:nth-child(2) {
-  width: 17%;
+  width: 15%;
 }
 
 .admin-products-table th:nth-child(3),
 .admin-products-table td:nth-child(3) {
-  width: 9%;
+  width: 8%;
 }
 
 .admin-products-table th:nth-child(4),
 .admin-products-table td:nth-child(4) {
-  width: 9%;
+  width: 8%;
 }
 
 .admin-products-table th:nth-child(5),
 .admin-products-table td:nth-child(5) {
-  width: 8%;
+  width: 7%;
 }
 
 .admin-products-table th:nth-child(6),
 .admin-products-table td:nth-child(6) {
-  width: 8%;
+  width: 7%;
 }
 
 .admin-products-table th:nth-child(7),
 .admin-products-table td:nth-child(7) {
-  width: 8%;
+  width: 7%;
 }
 
 .admin-products-table th:nth-child(8),
 .admin-products-table td:nth-child(8) {
-  width: 8%;
+  width: 7%;
 }
 
 .admin-products-table th:nth-child(9),
@@ -3081,17 +3095,74 @@ body:has(.admin-dashboard-shell) .site-footer {
 
 .admin-products-table th:nth-child(10),
 .admin-products-table td:nth-child(10) {
-  width: 12%;
+  width: 11%;
 }
 
 .admin-products-table th:nth-child(11),
 .admin-products-table td:nth-child(11) {
+  text-align: center;
+  width: 7%;
+}
+
+.admin-products-table th:nth-child(12),
+.admin-products-table td:nth-child(12) {
   width: 5%;
 }
 
 .admin-products-table tr.is-inactive {
   background: #fafafa;
   color: #888;
+}
+
+.admin-products-table tr.is-dragging {
+  opacity: 0.55;
+}
+
+.admin-product-id-cell {
+  align-items: center;
+  display: flex;
+  gap: 5px;
+}
+
+.admin-row-drag-handle {
+  color: #aaa;
+  cursor: grab;
+  font-size: 0.76rem;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.admin-row-order-controls {
+  display: none;
+  gap: 2px;
+}
+
+.admin-row-order-controls button {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #6f625c;
+  cursor: pointer;
+  font-size: 0.62rem;
+  height: 22px;
+  width: 22px;
+}
+
+.admin-row-order-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.admin-featured-checkbox-cell input {
+  accent-color: #b72d25;
+  cursor: pointer;
+  height: 17px;
+  width: 17px;
+}
+
+.admin-featured-checkbox-cell input:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
 .admin-products-table td > small {
@@ -3495,6 +3566,35 @@ body:has(.admin-dashboard-shell) .site-footer {
   -webkit-text-fill-color: #574e49;
 }
 
+.admin-price-input {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dcdcdc;
+  border-radius: 6px;
+  display: flex;
+  min-height: 42px;
+  overflow: hidden;
+}
+
+.admin-price-input > span {
+  color: #8b3f36;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0 0 0 11px;
+}
+
+.admin-product-form-grid .admin-price-input input {
+  border: 0;
+  border-radius: 0;
+  min-height: 40px;
+  padding-left: 7px;
+}
+
+.admin-product-form-grid .admin-price-input input:focus {
+  box-shadow: none;
+  outline: 0;
+}
+
 .admin-product-form-grid label > small {
   color: #7e746e;
   font-size: 0.55rem;
@@ -3809,13 +3909,17 @@ body:has(.admin-dashboard-shell) .site-footer {
 }
 
 .product-selector select {
-  background: #fff;
+  appearance: none;
+  background:
+    #fff
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath fill='%23322b28' d='M0 0h10L5 6z'/%3E%3C/svg%3E")
+    right 10px center / 9px 6px no-repeat;
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--ink);
   font: inherit;
   min-height: 42px;
-  padding: 8px 10px;
+  padding: 8px 30px 8px 10px;
   width: 100%;
 }
 
@@ -4032,7 +4136,11 @@ body:has(.admin-dashboard-shell) .site-footer {
   }
 
   .admin-products-table {
-    min-width: 920px;
+    min-width: 1080px;
+  }
+
+  .admin-row-order-controls {
+    display: inline-flex;
   }
 }
 
