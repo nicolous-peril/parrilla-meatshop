@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CartSummary } from "@/components/CartSummary";
 import { useCart } from "@/components/CartProvider";
 import { displayName, peso } from "@/lib/products";
@@ -38,6 +39,7 @@ function buildOrderMessage(cart, data, products) {
 
 export function CheckoutPageClient({ products }) {
   const { cart, clearCart, syncProducts } = useCart();
+  const router = useRouter();
   const [confirmation, setConfirmation] = useState("");
   const [mailto, setMailto] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,7 +91,9 @@ export function CheckoutPageClient({ products }) {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Order request could not be saved.");
+        const apiError = new Error(result.error || "Order request could not be saved.");
+        apiError.code = result.code;
+        throw apiError;
       }
 
       setConfirmation(
@@ -98,6 +102,13 @@ export function CheckoutPageClient({ products }) {
       clearCart();
       form.reset();
     } catch (error) {
+      if (error?.code === "INVENTORY_CHANGED") {
+        setConfirmation(error.message);
+        setMailto("");
+        router.refresh();
+        return;
+      }
+
       setConfirmation(
         `${error.message} Please send the prepared order to Parrilla Meat Shop so staff can still process it.`
       );

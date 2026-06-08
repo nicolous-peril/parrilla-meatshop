@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseClient } from "@/lib/supabase";
+import { createSupabaseClient, createSupabaseServiceClient } from "@/lib/supabase";
 import { channelPrice, displayName, formatWeightLabel } from "@/lib/products";
 
 function cleanText(value) {
@@ -13,6 +13,133 @@ function normalizeCartItem(item) {
     selectedWeightId: cleanText(item?.selectedWeightId),
     qty: Number(item?.qty || 0)
   };
+}
+
+function inventoryError(message) {
+  const error = new Error(message);
+  error.code = "INVENTORY_CHANGED";
+  return error;
+}
+
+function aggregateInventoryItems(cart) {
+  const grouped = new Map();
+
+  cart.forEach((item) => {
+    const key = `${item.productId}:${item.selectedWeightId || ""}`;
+    const current = grouped.get(key) || {
+      product_id: item.productId,
+      selected_weight_id: item.selectedWeightId || null,
+      qty: 0
+    };
+    current.qty += item.qty;
+    grouped.set(key, current);
+  });
+
+  return [...grouped.values()];
+}
+
+async function deductInventoryWithRpc(supabase, inventoryItems) {
+  const { error } = await supabase.rpc("deduct_pack_inventory_for_order", {
+    p_items: inventoryItems
+  });
+
+  if (!error) return true;
+  if (error.message?.includes("deduct_pack_inventory_for_order")) return false;
+  if (error.message?.includes("not available") || error.message?.includes("Insufficient")) {
+    throw inventoryError("Availability changed while you were shopping. Please refresh your cart and adjust the selected pack size or quantity.");
+  }
+  throw new Error(`Could not update inventory: ${error.message}`);
+}
+
+async function refreshProductInventory(supabase, productId) {
+  const { data: weights, error: weightsError } = await supabase
+    .from("product_weight_options")
+    .select("on_hand_qty")
+    .eq("product_id", productId);
+
+  if (weightsError) throw new Error(`Could not refresh pack inventory: ${weightsError.message}`);
+
+  const total = (weights || []).reduce((sum, weight) => sum + Math.max(0, Number(weight.on_hand_qty || 0)), 0);
+  const { error: productError } = await supabase
+    .from("products")
+    .update({
+      on_hand_qty: total,
+      stock: total > 0 ? "in-stock" : "out-of-stock"
+    })
+    .eq("id", productId);
+
+  if (productError) throw new Error(`Could not refresh product inventory: ${productError.message}`);
+}
+
+async function deductInventoryFallback(supabase, inventoryItems) {
+  for (const item of inventoryItems) {
+    if (item.selected_weight_id) {
+      const { data: weight, error: weightError } = await supabase
+        .from("product_weight_options")
+        .select("id, product_id, on_hand_qty, status")
+        .eq("id", item.selected_weight_id)
+        .eq("product_id", item.product_id)
+        .single();
+
+      if (weightError || !weight) {
+        throw inventoryError("One selected pack size is no longer available. Please refresh your cart.");
+      }
+
+      const remainingQty = Number(weight.on_hand_qty || 0) - item.qty;
+      if (weight.status !== "available" || remainingQty < 0) {
+        throw inventoryError("Availability changed while you were shopping. Please choose another pack size or lower the quantity.");
+      }
+
+      const { error: updateWeightError } = await supabase
+        .from("product_weight_options")
+        .update({
+          on_hand_qty: remainingQty,
+          status: remainingQty > 0 ? "available" : "unavailable"
+        })
+        .eq("id", weight.id);
+
+      if (updateWeightError) throw new Error(`Could not update pack inventory: ${updateWeightError.message}`);
+      await refreshProductInventory(supabase, weight.product_id);
+      continue;
+    }
+
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .select("id, on_hand_qty, stock, active")
+      .eq("id", item.product_id)
+      .single();
+
+    if (productError || !product) {
+      throw inventoryError("One product is no longer available. Please refresh your cart.");
+    }
+
+    const remainingQty = Number(product.on_hand_qty || 0) - item.qty;
+    if (!product.active || product.stock === "out-of-stock" || remainingQty < 0) {
+      throw inventoryError("Availability changed while you were shopping. Please adjust your cart.");
+    }
+
+    const { error: updateProductError } = await supabase
+      .from("products")
+      .update({
+        on_hand_qty: remainingQty,
+        stock: remainingQty > 0 ? "in-stock" : "out-of-stock"
+      })
+      .eq("id", product.id);
+
+    if (updateProductError) throw new Error(`Could not update product inventory: ${updateProductError.message}`);
+  }
+}
+
+async function deductInventory(cart) {
+  const inventoryItems = aggregateInventoryItems(cart);
+  const serviceClient = createSupabaseServiceClient();
+  const supabase = serviceClient || createSupabaseClient();
+
+  if (await deductInventoryWithRpc(supabase, inventoryItems)) return;
+  if (!serviceClient) {
+    throw new Error("Inventory updates require SUPABASE_SECRET_KEY or the deduct_pack_inventory_for_order database function.");
+  }
+  await deductInventoryFallback(serviceClient, inventoryItems);
 }
 
 export async function POST(request) {
@@ -201,6 +328,18 @@ export async function POST(request) {
 
   if (itemsError) {
     return NextResponse.json({ error: "Could not create order items." }, { status: 500 });
+  }
+
+  try {
+    await deductInventory(cart);
+  } catch (error) {
+    const message = error?.code === "INVENTORY_CHANGED"
+      ? error.message
+      : "Order saved, but inventory could not be updated. Please contact staff before accepting payment.";
+    return NextResponse.json(
+      { error: message, code: error?.code || "INVENTORY_UPDATE_FAILED" },
+      { status: error?.code === "INVENTORY_CHANGED" ? 409 : 500 }
+    );
   }
 
   return NextResponse.json({
