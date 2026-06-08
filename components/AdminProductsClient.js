@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAdminAuth } from "@/components/AdminAuthProvider";
 import {
   encodeProductDisplaySettings,
+  formatWeightLabel,
   parseProductDisplaySettings,
   peso,
   productImagePath
@@ -85,8 +86,31 @@ function weightPrice(basePrice, weightValue) {
   return (price * weight).toFixed(2);
 }
 
+function weightInventoryTotal(weights) {
+  return weights.reduce(
+    (total, weight) => total + Math.max(0, Math.trunc(Number(weight.on_hand_qty || 0))),
+    0
+  );
+}
+
+function withWeightInventory(product, weights) {
+  return {
+    ...product,
+    weight_options: weights,
+    on_hand_qty: weights.length ? weightInventoryTotal(weights) : 0
+  };
+}
+
 function toFormProduct(product) {
   const displaySettings = parseProductDisplaySettings(product.promo);
+  const weights = (product.product_weight_options || []).map((weight) => ({
+    ...EMPTY_WEIGHT,
+    ...weight,
+    weight_label: formatWeightLabel(weight),
+    weight_value: weight.weight_value ?? "",
+    price: weight.price ?? weightPrice(product.price, weight.weight_value),
+    on_hand_qty: weight.on_hand_qty ?? ""
+  }));
 
   return {
     ...EMPTY_PRODUCT,
@@ -104,7 +128,7 @@ function toFormProduct(product) {
     moq: product.moq ?? 1,
     moq_unit: product.moq_unit || "item",
     moq_text: `${product.moq ?? 1} ${product.moq_unit || "item"}`.trim(),
-    on_hand_qty: product.on_hand_qty ?? 0,
+    on_hand_qty: weights.length ? weightInventoryTotal(weights) : (product.on_hand_qty ?? 0),
     product_status: product.product_status || (product.active === false ? "inactive" : "active"),
     notes: product.notes || "",
     description: product.description || "",
@@ -114,14 +138,7 @@ function toFormProduct(product) {
       notes: displaySettings.notes
     },
     image_path: product.image_path || "/images/parrilla logo.png",
-    weight_options: (product.product_weight_options || []).map((weight) => ({
-      ...EMPTY_WEIGHT,
-      ...weight,
-      weight_label: weight.weight_label || (weight.weight_value ? `${weight.weight_value}kg` : ""),
-      weight_value: weight.weight_value ?? "",
-      price: weight.price ?? weightPrice(product.price, weight.weight_value),
-      on_hand_qty: weight.on_hand_qty ?? ""
-    }))
+    weight_options: weights
   };
 }
 
@@ -205,6 +222,7 @@ async function optimizeImage(file) {
 export function AdminProductsClient() {
   const { supabase } = useAdminAuth();
   const fileInputRef = useRef(null);
+  const packToastTimerRef = useRef(null);
   const [products, setProducts] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [deleteProduct, setDeleteProduct] = useState(null);
@@ -221,6 +239,8 @@ export function AdminProductsClient() {
   const [isUploading, setIsUploading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [packConfigDirty, setPackConfigDirty] = useState(false);
+  const [packToast, setPackToast] = useState("");
 
   useEffect(() => {
     loadProducts();
@@ -230,6 +250,8 @@ export function AdminProductsClient() {
     document.body.style.overflow = modalOpen || imageModalOpen || deleteProduct ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [deleteProduct, imageModalOpen, modalOpen]);
+
+  useEffect(() => () => clearTimeout(packToastTimerRef.current), []);
 
   const categories = useMemo(
     () => [...new Set(products.map((product) => product.category).filter(Boolean))].sort(),
@@ -312,6 +334,7 @@ export function AdminProductsClient() {
     setSelectedId(null);
     setForm(EMPTY_PRODUCT);
     setMessage("");
+    setPackConfigDirty(false);
     setModalOpen(true);
   }
 
@@ -319,6 +342,7 @@ export function AdminProductsClient() {
     setSelectedId(product.id);
     setForm(toFormProduct(product));
     setMessage("");
+    setPackConfigDirty(false);
     setModalOpen(true);
   }
 
@@ -328,10 +352,18 @@ export function AdminProductsClient() {
     setModalOpen(false);
     setSelectedId(null);
     setForm(EMPTY_PRODUCT);
+    setPackConfigDirty(false);
+  }
+
+  function showPackToast() {
+    clearTimeout(packToastTimerRef.current);
+    setPackToast("Pack Size Configuration Saved");
+    packToastTimerRef.current = setTimeout(() => setPackToast(""), 2800);
   }
 
   function updateField(event) {
     const { name, value, type, checked } = event.target;
+    if (name === "price" && form.weight_options.length) setPackConfigDirty(true);
     setForm((current) => {
       const nextValue = type === "checkbox" ? checked : value;
       if (name !== "price") return { ...current, [name]: nextValue };
@@ -364,21 +396,22 @@ export function AdminProductsClient() {
   }
 
   function updateWeight(index, field, value) {
-    setForm((current) => ({
-      ...current,
-      weight_options: current.weight_options.map((weight, weightIndex) =>
+    setPackConfigDirty(true);
+    setForm((current) => {
+      const weights = current.weight_options.map((weight, weightIndex) =>
         weightIndex === index
           ? {
               ...weight,
               [field]: value,
               ...(field === "weight_value" ? {
-                weight_label: value ? `${value}kg` : "",
+                weight_label: value ? formatWeightLabel(value) : "",
                 price: weightPrice(current.price, value)
               } : {})
             }
           : weight
-      )
-    }));
+      );
+      return withWeightInventory(current, weights);
+    });
   }
 
   function updateDisplayField(event) {
@@ -390,34 +423,37 @@ export function AdminProductsClient() {
   }
 
   function addWeight() {
-    setForm((current) => ({
-      ...current,
-      weight_options: [...current.weight_options, { ...EMPTY_WEIGHT, sort_order: current.weight_options.length }]
-    }));
+    setPackConfigDirty(true);
+    setForm((current) => withWeightInventory(current, [
+      ...current.weight_options,
+      { ...EMPTY_WEIGHT, sort_order: current.weight_options.length }
+    ]));
   }
 
   function removeWeight(index) {
-    setForm((current) => ({
-      ...current,
-      weight_options: current.weight_options.filter((_, weightIndex) => weightIndex !== index)
-    }));
+    setPackConfigDirty(true);
+    setForm((current) => withWeightInventory(
+      current,
+      current.weight_options.filter((_, weightIndex) => weightIndex !== index)
+    ));
   }
 
   function confirmWeight(index) {
-    setForm((current) => ({
-      ...current,
-      weight_options: current.weight_options.map((weight, weightIndex) =>
+    setPackConfigDirty(true);
+    setForm((current) => {
+      const weights = current.weight_options.map((weight, weightIndex) =>
         weightIndex === index
           ? {
               ...weight,
-              weight_label: weight.weight_value ? `${weight.weight_value}kg` : "",
+              weight_label: weight.weight_value ? formatWeightLabel(weight.weight_value) : "",
               price: weightPrice(current.price, weight.weight_value),
               on_hand_qty: Math.max(0, Math.trunc(Number(weight.on_hand_qty || 0))),
               status: Number(weight.on_hand_qty || 0) > 0 ? "available" : "unavailable"
             }
           : weight
-      )
-    }));
+      );
+      return withWeightInventory(current, weights);
+    });
   }
 
   async function handleImageUpload(event) {
@@ -456,6 +492,9 @@ export function AdminProductsClient() {
     setMessage("Saving product...");
 
     try {
+      const calculatedOnHand = form.weight_options.length
+        ? weightInventoryTotal(form.weight_options)
+        : Math.max(0, Math.trunc(Number(form.on_hand_qty || 0)));
       const internalId = selectedId || [
         form.sales_channel,
         slugify(cleanString(form.name)),
@@ -483,8 +522,8 @@ export function AdminProductsClient() {
         kg_per_box: cleanString(form.pack_size) || null,
         moq: parsedMoq.moq,
         moq_unit: parsedMoq.unit,
-        on_hand_qty: Math.max(0, Math.trunc(Number(form.on_hand_qty || 0))),
-        stock: Number(form.on_hand_qty || 0) > 0 ? "in-stock" : "out-of-stock",
+        on_hand_qty: calculatedOnHand,
+        stock: calculatedOnHand > 0 ? "in-stock" : "out-of-stock",
         featured: form.featured,
         default_option: form.default_option,
         notes: cleanString(form.notes) || null,
@@ -516,7 +555,7 @@ export function AdminProductsClient() {
         const { error: weightsError } = await supabase.from("product_weight_options").insert(
           form.weight_options.map((weight, index) => ({
             product_id: savedProduct.id,
-            weight_label: `${Number(weight.weight_value)}kg`,
+            weight_label: formatWeightLabel(weight.weight_value),
             weight_value: nullableNumber(weight.weight_value),
             price: Number(weightPrice(form.price, weight.weight_value)),
             on_hand_qty: Math.max(0, Math.trunc(Number(weight.on_hand_qty || 0))),
@@ -532,6 +571,8 @@ export function AdminProductsClient() {
       setModalOpen(false);
       setSelectedId(null);
       setForm(EMPTY_PRODUCT);
+      if (packConfigDirty) showPackToast();
+      setPackConfigDirty(false);
       await loadProducts(`${savedProduct.name} (${savedProduct.sku}) saved successfully.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save product.");
@@ -615,6 +656,7 @@ export function AdminProductsClient() {
       </section>
 
       {message ? <div className="admin-inline-message">{message}</div> : null}
+      {packToast ? <div className="admin-pack-toast" role="status"><span>✓</span>{packToast}</div> : null}
 
       <section className="admin-products-table-panel">
         <div className="admin-products-filters">
@@ -728,7 +770,19 @@ export function AdminProductsClient() {
                 <div className="admin-product-form-grid admin-product-form-grid-four">
                   <label><span>Price</span><input type="number" min="0" step="0.01" name="price" value={form.price} onChange={updateField} onBlur={normalizePrice} /></label>
                   <label><span>Pack Size</span><input name="pack_size" value={form.pack_size} onChange={updateField} /></label>
-                  <label><span>On Hand Qty.</span><input type="number" min="0" step="1" name="on_hand_qty" value={form.on_hand_qty} onChange={updateField} /></label>
+                  <label className={form.weight_options.length ? "admin-system-field" : ""}>
+                    <span>On Hand Qty. {form.weight_options.length ? <LockIcon /> : null}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      name="on_hand_qty"
+                      value={form.on_hand_qty}
+                      onChange={updateField}
+                      disabled={form.weight_options.length > 0}
+                    />
+                    {form.weight_options.length ? <small>Calculated from pack size quantities.</small> : null}
+                  </label>
                   <label><span>MOQ</span><input name="moq_text" value={form.moq_text} onChange={updateField} placeholder="e.g. 1 pack or 5 kg" /></label>
                 </div>
 

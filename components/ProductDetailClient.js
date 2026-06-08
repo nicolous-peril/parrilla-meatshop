@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
-import { displayName, optionSize, peso, productImagePath } from "@/lib/products";
+import { displayName, formatWeightLabel, optionSize, peso, productImagePath } from "@/lib/products";
 
 function sortOptions(options) {
   return [...options].sort((left, right) => {
@@ -14,8 +14,13 @@ function sortOptions(options) {
 
 function weightsFor(product) {
   return (product.weightOptions || [])
-    .filter((weight) => weight.status === "available")
+    .filter((weight) => weight.status === "available" && Number(weight.onHandQty || 0) > 0)
     .sort((left, right) => (right.value || optionSize(right.label)) - (left.value || optionSize(left.label)));
+}
+
+function availableQty(product, selectedWeight) {
+  if (selectedWeight) return Number(selectedWeight.onHandQty || 0);
+  return Number(product.onHandQty || 0);
 }
 
 export function ProductDetailClient({ product, channel }) {
@@ -27,12 +32,15 @@ export function ProductDetailClient({ product, channel }) {
   const [selectedWeightId, setSelectedWeightId] = useState(weights[0]?.id || "");
   const selectedWeight = weights.find((weight) => weight.id === selectedWeightId) || weights[0] || null;
   const price = selectedWeight?.price ?? selectedProduct.price;
+  const selectedAvailableQty = availableQty(selectedProduct, selectedWeight);
 
   const configurations = [...new Set(
     options.map((option) => option.configuration || option.packSize).filter(Boolean)
   )];
   const canAdd =
+    selectedProduct.productStatus !== "inactive" &&
     selectedProduct.stock !== "out-of-stock" &&
+    selectedAvailableQty > 0 &&
     Boolean(price) &&
     (!selectedProduct.weightOptions?.length || Boolean(selectedWeight));
 
@@ -56,6 +64,7 @@ export function ProductDetailClient({ product, channel }) {
           {price ? peso.format(price) : "Contact for price"}
           {channel === "wholesale" && !selectedWeight ? " / kg" : ""}
         </div>
+        {!canAdd ? <span className="product-stock-badge is-out">Out of Stock</span> : null}
         <p className="product-meta"><strong>SKU:</strong> {selectedProduct.sku || "Pending"}</p>
 
         {!weights.length && configurations.length > 1 ? (
@@ -85,7 +94,7 @@ export function ProductDetailClient({ product, channel }) {
             <span>Pack Size</span>
             <select value={selectedWeight?.id || ""} onChange={(event) => setSelectedWeightId(event.target.value)}>
               {weights.map((weight) => (
-                <option value={weight.id} key={weight.id}>{weight.label} - {peso.format(weight.price)}</option>
+                <option value={weight.id} key={weight.id}>{formatWeightLabel(weight)}</option>
               ))}
             </select>
           </label>
@@ -100,7 +109,7 @@ export function ProductDetailClient({ product, channel }) {
             disabled={!canAdd}
             onClick={() => addToCart(selectedProduct, channel, { selectedWeight })}
           >
-            {selectedProduct.stock === "out-of-stock" ? "Out of stock" : !canAdd ? "Ask price" : "Add to cart"}
+            {!canAdd ? "Out of stock" : "Add to cart"}
           </button>
           <Link className="btn btn-secondary" href="/contact">Ask about bulk orders</Link>
         </div>

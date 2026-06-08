@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import {
   displayName,
+  formatWeightLabel,
   optionSize,
   peso,
   priceLabel,
@@ -20,8 +21,13 @@ function bestOption(options) {
 
 function availableWeights(product) {
   return (product.weightOptions || [])
-    .filter((option) => option.status === "available")
+    .filter((option) => option.status === "available" && Number(option.onHandQty || 0) > 0)
     .sort((left, right) => (right.value || optionSize(right.label)) - (left.value || optionSize(left.label)));
+}
+
+function availableQty(product, selectedWeight) {
+  if (selectedWeight) return Number(selectedWeight.onHandQty || 0);
+  return Number(product.onHandQty || 0);
 }
 
 export function ProductCard({ product, channel }) {
@@ -33,6 +39,7 @@ export function ProductCard({ product, channel }) {
   const weights = availableWeights(selectedProduct);
   const [selectedWeightId, setSelectedWeightId] = useState(weights[0]?.id || "");
   const selectedWeight = weights.find((option) => option.id === selectedWeightId) || weights[0] || null;
+  const selectedAvailableQty = availableQty(selectedProduct, selectedWeight);
 
   const configurations = [...new Set(
     options.map((option) => option.configuration || option.packSize).filter(Boolean)
@@ -42,8 +49,9 @@ export function ProductCard({ product, channel }) {
     candidate.selectedWeightId === (selectedWeight?.id || "")
   );
   const out =
+    selectedProduct.productStatus === "inactive" ||
     selectedProduct.stock === "out-of-stock" ||
-    (selectedProduct.onHandQty <= 0 && selectedProduct.onHandQty !== 0) ||
+    selectedAvailableQty <= 0 ||
     (selectedProduct.weightOptions?.length > 0 && !selectedWeight);
   const price = selectedWeight?.price ?? selectedProduct.price;
   const detailsHref = `/product/${selectedProduct.id}?channel=${channel}`;
@@ -72,6 +80,7 @@ export function ProductCard({ product, channel }) {
           {price ? peso.format(price) : priceLabel(selectedProduct, channel)}
           {channel === "wholesale" && !selectedWeight ? " / kg" : ""}
         </div>
+        {out ? <span className="product-stock-badge is-out">Out of Stock</span> : null}
 
         {!weights.length && configurations.length > 1 ? (
           <label className="product-selector">
@@ -96,7 +105,7 @@ export function ProductCard({ product, channel }) {
             <span>Pack Size</span>
             <select value={selectedWeight?.id || ""} onChange={(event) => setSelectedWeightId(event.target.value)}>
               {weights.map((weight) => (
-                <option key={weight.id} value={weight.id}>{weight.label} - {peso.format(weight.price)}</option>
+                <option key={weight.id} value={weight.id}>{formatWeightLabel(weight)}</option>
               ))}
             </select>
           </label>
@@ -115,7 +124,14 @@ export function ProductCard({ product, channel }) {
             <div className="card-qty-control">
               <button type="button" onClick={() => updateQuantity(item.key, -1)} aria-label="Decrease quantity">-</button>
               <strong>{item.qty}</strong>
-              <button type="button" onClick={() => updateQuantity(item.key, 1)} aria-label="Increase quantity">+</button>
+              <button
+                type="button"
+                onClick={() => updateQuantity(item.key, 1)}
+                aria-label="Increase quantity"
+                disabled={Number(item.availableQty || selectedAvailableQty || 0) > 0 && item.qty >= Number(item.availableQty || selectedAvailableQty || 0)}
+              >
+                +
+              </button>
             </div>
           ) : (
             <button

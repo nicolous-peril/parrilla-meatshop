@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { channelPrice, minQtyFor } from "@/lib/products";
+import { channelPrice, formatWeightLabel, minQtyFor } from "@/lib/products";
 
 const CART_KEY = "parrilla.cart";
 const CartContext = createContext(null);
@@ -25,6 +25,22 @@ function cartKey(productId, channel, selectedWeightId = "") {
   return `${productId}:${channel}:${selectedWeightId}`;
 }
 
+function availableQty(product, selectedWeight = null) {
+  if (!product) return 0;
+  if (selectedWeight) return Number(selectedWeight.onHandQty || selectedWeight.on_hand_qty || 0);
+  return Number(product.onHandQty || product.on_hand_qty || 0);
+}
+
+function isPurchasable(product, selectedWeight = null) {
+  if (!product) return false;
+  const hasWeights = Array.isArray(product.weightOptions) && product.weightOptions.length > 0;
+  if (product.productStatus === "inactive" || product.active === false) return false;
+  if (product.stock === "out-of-stock") return false;
+  if (hasWeights && !selectedWeight) return false;
+  if (selectedWeight && selectedWeight.status !== "available") return false;
+  return availableQty(product, selectedWeight) > 0;
+}
+
 export function CartProvider({ children }) {
   const [cart, setCart] = useState([]);
   const [hydrated, setHydrated] = useState(false);
@@ -46,11 +62,15 @@ export function CartProvider({ children }) {
 
       setCart((current) => {
         const selectedWeight = selection.selectedWeight || null;
+        const maxQty = availableQty(product, selectedWeight);
+        const minQty = minQtyFor(channel, product);
+        if (!isPurchasable(product, selectedWeight) || maxQty < minQty) return current;
         const key = cartKey(product.id, channel, selectedWeight?.id || "");
         const existing = current.find((item) => item.key === key);
         if (existing) {
+          if (existing.qty >= maxQty) return current;
           const next = current.map((item) =>
-            item.key === key ? { ...item, qty: item.qty + 1 } : item
+            item.key === key ? { ...item, qty: Math.min(maxQty, item.qty + 1), availableQty: maxQty } : item
           );
           writeCart(next);
           return next;
@@ -62,14 +82,15 @@ export function CartProvider({ children }) {
             key,
             productId: product.id,
             channel,
-            qty: minQtyFor(channel, product),
+            qty: minQty,
             price: selectedWeight?.price ?? channelPrice(product, channel),
             sku: product.sku || "",
             configuration: product.configuration || "",
             selectedWeightId: selectedWeight?.id || "",
-            selectedWeight: selectedWeight?.label || "",
-            moq: minQtyFor(channel, product),
+            selectedWeight: selectedWeight ? formatWeightLabel(selectedWeight) : "",
+            moq: minQty,
             moqUnit: product.moqUnit || product.packaging || "item",
+            availableQty: maxQty,
             notes: product.notes || ""
           }
         ];
@@ -83,8 +104,10 @@ export function CartProvider({ children }) {
         const next = current.flatMap((item) => {
           if (item.key !== key) return item;
           const minQty = Number(item.moq || minQtyFor(item.channel));
-          if (item.channel !== "reseller" && step < 0 && item.qty <= minQty) return [];
-          return { ...item, qty: Math.max(minQty, item.qty + step) };
+          const maxQty = Number(item.availableQty || 0);
+          if (maxQty <= 0) return [];
+          if (step < 0 && item.qty <= minQty) return [];
+          return { ...item, qty: Math.min(maxQty, Math.max(minQty, item.qty + step)) };
         });
         writeCart(next);
         return next;
@@ -114,16 +137,21 @@ export function CartProvider({ children }) {
             ? product.weightOptions?.find((option) => option.id === item.selectedWeightId)
             : null;
           if (item.selectedWeightId && !selectedWeight) return [];
+          const maxQty = availableQty(product, selectedWeight);
+          const minQty = minQtyFor(item.channel, product);
+          if (!isPurchasable(product, selectedWeight) || maxQty < minQty) return [];
           const { brand: _legacyBrand, ...storedItem } = item;
           return {
             ...storedItem,
+            qty: Math.min(maxQty, Math.max(minQty, Number(item.qty || minQty))),
             price: selectedWeight?.price ?? channelPrice(product, item.channel),
             sku: product.sku || item.sku || "",
             configuration: product.configuration || "",
             selectedWeightId: selectedWeight?.id || "",
-            selectedWeight: selectedWeight?.label || "",
-            moq: minQtyFor(item.channel, product),
+            selectedWeight: selectedWeight ? formatWeightLabel(selectedWeight) : "",
+            moq: minQty,
             moqUnit: product.moqUnit || product.packaging || "item",
+            availableQty: maxQty,
             notes: product.notes || ""
           };
         });

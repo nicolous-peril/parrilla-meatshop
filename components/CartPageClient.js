@@ -42,7 +42,12 @@ export function CartPageClient({ products }) {
                   <div className="qty-control">
                     <button onClick={() => updateQuantity(item.key, -1)}>-</button>
                     <strong>{item.qty}</strong>
-                    <button onClick={() => updateQuantity(item.key, 1)}>+</button>
+                    <button
+                      onClick={() => updateQuantity(item.key, 1)}
+                      disabled={Number(item.availableQty || 0) > 0 && item.qty >= Number(item.availableQty || 0)}
+                    >
+                      +
+                    </button>
                   </div>
                   <div className="price">
                     {item.price ? peso.format(item.price * item.qty) : "Quote required"}

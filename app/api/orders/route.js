@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseClient } from "@/lib/supabase";
-import { channelPrice, displayName } from "@/lib/products";
+import { channelPrice, displayName, formatWeightLabel } from "@/lib/products";
 
 function cleanText(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -111,11 +111,29 @@ export async function POST(request) {
     const product = productById.get(item.productId);
     const weights = product.product_weight_options || [];
     if (!weights.length) return Boolean(item.selectedWeightId);
-    return !weights.some((weight) => weight.id === item.selectedWeightId && weight.status === "available");
+    return !weights.some((weight) =>
+      weight.id === item.selectedWeightId &&
+      weight.status === "available" &&
+      Number(weight.on_hand_qty || 0) > 0
+    );
   });
 
   if (invalidWeight) {
     return NextResponse.json({ error: "Choose an available weight for each variable-weight product." }, { status: 400 });
+  }
+
+  const invalidInventory = cart.find((item) => {
+    const product = productById.get(item.productId);
+    const selectedWeight = (product.product_weight_options || [])
+      .find((weight) => weight.id === item.selectedWeightId);
+    const availableQty = selectedWeight
+      ? Number(selectedWeight.on_hand_qty || 0)
+      : Number(product.on_hand_qty || 0);
+    return availableQty <= 0 || item.qty > availableQty || product.stock === "out-of-stock" || product.active === false;
+  });
+
+  if (invalidInventory) {
+    return NextResponse.json({ error: "One or more products are out of stock or exceed available quantity." }, { status: 400 });
   }
 
   const orderItems = cart.map((item) => {
@@ -148,7 +166,7 @@ export async function POST(request) {
       ...snapshot,
       sku: product.sku || null,
       selected_configuration: product.configuration || null,
-      selected_weight: selectedWeight?.weight_label || null,
+      selected_weight: selectedWeight ? formatWeightLabel(selectedWeight.weight_value) : null,
       moq: Number(product.moq || 1),
       moq_unit: product.moq_unit || product.packaging || "item",
       notes_snapshot: product.notes || null
