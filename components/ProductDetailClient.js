@@ -66,7 +66,7 @@ export function ProductDetailClient({ product, channel }) {
         </div>
         <p className="product-meta"><strong>SKU:</strong> {selectedProduct.sku || "Pending"}</p>
 
-        {brands.length > 1 ? (
+        {selectedProduct.displayFields?.brand !== false && brands.length > 1 ? (
           <label className="product-selector">
             <span>Brand</span>
             <select
@@ -76,11 +76,11 @@ export function ProductDetailClient({ product, channel }) {
               {brands.map((brand) => <option key={brand}>{brand}</option>)}
             </select>
           </label>
-        ) : selectedProduct.brand ? (
+        ) : selectedProduct.displayFields?.brand !== false && selectedProduct.brand ? (
           <p className="product-meta"><strong>Brand:</strong> {selectedProduct.brand}</p>
         ) : null}
 
-        {configurations.length > 1 ? (
+        {!weights.length && configurations.length > 1 ? (
           <label className="product-selector">
             <span>Configuration</span>
             <select
@@ -96,15 +96,15 @@ export function ProductDetailClient({ product, channel }) {
                 .map((configuration) => <option key={configuration}>{configuration}</option>)}
             </select>
           </label>
-        ) : (
+        ) : !weights.length ? (
           <p className="product-meta">
             <strong>Pack Size:</strong> {selectedProduct.configuration || selectedProduct.packSize || selectedProduct.packaging || "Pack"}
           </p>
-        )}
+        ) : null}
 
         {weights.length ? (
           <label className="product-selector">
-            <span>Actual Weight</span>
+            <span>Pack Size</span>
             <select value={selectedWeight?.id || ""} onChange={(event) => setSelectedWeightId(event.target.value)}>
               {weights.map((weight) => (
                 <option value={weight.id} key={weight.id}>{weight.label} - {peso.format(weight.price)}</option>
@@ -113,9 +113,9 @@ export function ProductDetailClient({ product, channel }) {
           </label>
         ) : null}
 
-        <p className="product-meta"><strong>MOQ:</strong> {selectedProduct.moq} {selectedProduct.moqUnit}</p>
+        {selectedProduct.displayFields?.moq !== false ? <p className="product-meta"><strong>MOQ:</strong> {selectedProduct.moq} {selectedProduct.moqUnit}</p> : null}
         <p>{selectedProduct.description || ""}</p>
-        {selectedProduct.notes ? <p className="product-notes"><strong>Notes:</strong> {selectedProduct.notes}</p> : null}
+        {selectedProduct.displayFields?.notes !== false && selectedProduct.notes ? <p className="product-notes"><strong>Notes:</strong> {selectedProduct.notes}</p> : null}
         <div className="product-actions">
           <button
             className="btn btn-primary"

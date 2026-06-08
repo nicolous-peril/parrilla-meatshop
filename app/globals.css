@@ -3367,6 +3367,75 @@ body:has(.admin-dashboard-shell) .site-footer {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.admin-product-form-grid-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-product-form-grid-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-product-identity-layout {
+  align-items: start;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 116px minmax(0, 1fr);
+}
+
+.admin-product-identity-image {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.admin-product-identity-image img {
+  background: #fff8f1;
+  border: 1px solid #e5ddd7;
+  border-radius: 8px;
+  height: 104px;
+  object-fit: contain;
+  padding: 6px;
+  width: 104px;
+}
+
+.admin-product-identity-image button {
+  background: transparent;
+  border: 0;
+  color: #b72d25;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.admin-form-field-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-product-form-grid label > span small {
+  color: #999;
+  font-size: 0.55rem;
+  font-weight: 500;
+}
+
+.admin-pack-config {
+  border-top: 1px solid #e7e7e7;
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 16px;
+}
+
+.admin-pack-config > p,
+.admin-checklist-help {
+  color: #777;
+  font-size: 0.63rem;
+  margin: 0;
+}
+
 .admin-product-form-section {
   border: 1px solid #e1e1e1;
   border-radius: 8px;
@@ -3421,8 +3490,8 @@ body:has(.admin-dashboard-shell) .site-footer {
   border-top: 1px solid #e8e8e8;
   display: grid;
   gap: 7px;
-  grid-template-columns: 1.1fr 1fr 1fr 0.9fr 1fr 34px;
-  min-width: 720px;
+  grid-template-columns: 1fr 1fr 1fr 44px 44px;
+  min-width: 520px;
   padding: 8px;
 }
 
@@ -3449,13 +3518,103 @@ body:has(.admin-dashboard-shell) .site-footer {
 }
 
 .admin-weight-row button {
-  background: #fff0f0;
   border: 0;
   border-radius: 5px;
-  color: #bd2525;
   cursor: pointer;
   font-size: 1rem;
   height: 32px;
+}
+
+.admin-weight-row button.is-remove {
+  background: #fff0f0;
+  color: #bd2525;
+}
+
+.admin-weight-row button.is-confirm {
+  background: #e9f6eb;
+  color: #237b34;
+}
+
+.admin-product-checklist {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-product-checklist label {
+  align-items: center;
+  background: #fafafa;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.68rem;
+  font-weight: 650;
+  gap: 8px;
+  padding: 10px;
+}
+
+.admin-product-checklist label.is-required {
+  color: #888;
+  cursor: default;
+}
+
+.admin-product-checklist input {
+  accent-color: #b72d25;
+}
+
+.admin-image-upload-modal {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  display: grid;
+  gap: 18px;
+  max-width: 440px;
+  padding: 22px;
+  width: 100%;
+}
+
+.admin-image-upload-modal header {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+}
+
+.admin-image-upload-modal h2 {
+  font-size: 1.05rem;
+  margin: 0 0 5px;
+}
+
+.admin-image-upload-modal p {
+  color: #777;
+  font-size: 0.66rem;
+  margin: 0;
+}
+
+.admin-image-upload-modal header > button {
+  background: #f2f2f2;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  height: 32px;
+  width: 32px;
+}
+
+.admin-image-upload-modal > img {
+  background: #fff8f1;
+  border: 1px solid #e4ddd7;
+  border-radius: 8px;
+  height: 220px;
+  object-fit: contain;
+  padding: 10px;
+  width: 100%;
+}
+
+.admin-image-upload-modal > div {
+  display: flex;
+  gap: 9px;
+  justify-content: flex-end;
 }
 
 .admin-confirm-backdrop {
@@ -3567,6 +3726,7 @@ body:has(.admin-dashboard-shell) .site-footer {
 
 .admin-product-form-grid input,
 .admin-product-form-grid select,
+.admin-product-form-grid textarea,
 .admin-modal-description textarea {
   background: #fff;
   border: 1px solid #dcdcdc;
@@ -3577,6 +3737,11 @@ body:has(.admin-dashboard-shell) .site-footer {
   min-height: 42px;
   padding: 9px 11px;
   width: 100%;
+}
+
+.admin-product-form-grid textarea {
+  min-height: 78px;
+  resize: vertical;
 }
 
 .admin-modal-description textarea {
@@ -3738,5 +3903,18 @@ body:has(.admin-dashboard-shell) .site-footer {
 
   .admin-product-form-grid-three {
     grid-template-columns: 1fr;
+  }
+
+  .admin-product-form-grid-two,
+  .admin-product-form-grid-four {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-product-identity-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-product-checklist {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

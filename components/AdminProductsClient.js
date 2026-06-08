@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAdminAuth } from "@/components/AdminAuthProvider";
-import { peso, productImagePath } from "@/lib/products";
+import {
+  encodeProductDisplaySettings,
+  parseProductDisplaySettings,
+  peso,
+  productImagePath
+} from "@/lib/products";
 
 const CHANNELS = ["retail", "reseller", "wholesale"];
 const EMPTY_WEIGHT = {
@@ -30,6 +35,7 @@ const EMPTY_PRODUCT = {
   brand_priority: 0,
   moq: 1,
   moq_unit: "item",
+  moq_text: "1 item",
   on_hand_qty: 0,
   stock: "in-stock",
   product_status: "active",
@@ -37,6 +43,12 @@ const EMPTY_PRODUCT = {
   default_option: false,
   notes: "",
   description: "",
+  public_promo: "",
+  display_fields: {
+    brand: true,
+    moq: true,
+    notes: true
+  },
   image_path: "/images/parrilla logo.png",
   sort_order: 0,
   active: true,
@@ -59,7 +71,26 @@ function slugify(value) {
     .replace(/^-+|-+$/g, "");
 }
 
+function parseMoqText(value) {
+  const text = cleanString(value);
+  const match = text.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
+  if (!match) return { moq: 1, unit: text || "item" };
+  return {
+    moq: Number(match[1]),
+    unit: cleanString(match[2]) || "item"
+  };
+}
+
+function weightPrice(basePrice, weightValue) {
+  const price = Number(basePrice);
+  const weight = Number(weightValue);
+  if (!Number.isFinite(price) || !Number.isFinite(weight)) return "";
+  return (price * weight).toFixed(2);
+}
+
 function toFormProduct(product) {
+  const displaySettings = parseProductDisplaySettings(product.promo);
+
   return {
     ...EMPTY_PRODUCT,
     ...product,
@@ -76,16 +107,24 @@ function toFormProduct(product) {
     brand: product.brand || "",
     moq: product.moq ?? 1,
     moq_unit: product.moq_unit || "item",
+    moq_text: `${product.moq ?? 1} ${product.moq_unit || "item"}`.trim(),
     on_hand_qty: product.on_hand_qty ?? 0,
     product_status: product.product_status || (product.active === false ? "inactive" : "active"),
     notes: product.notes || "",
     description: product.description || "",
+    public_promo: displaySettings.publicPromo,
+    display_fields: {
+      brand: displaySettings.brand,
+      moq: displaySettings.moq,
+      notes: displaySettings.notes
+    },
     image_path: product.image_path || "/images/parrilla logo.png",
     weight_options: (product.product_weight_options || []).map((weight) => ({
       ...EMPTY_WEIGHT,
       ...weight,
+      weight_label: weight.weight_label || (weight.weight_value ? `${weight.weight_value}kg` : ""),
       weight_value: weight.weight_value ?? "",
-      price: weight.price ?? "",
+      price: weight.price ?? weightPrice(product.price, weight.weight_value),
       on_hand_qty: weight.on_hand_qty ?? ""
     }))
   };
@@ -171,18 +210,23 @@ export function AdminProductsClient() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
 
   useEffect(() => {
     loadProducts();
   }, [supabase]);
 
   useEffect(() => {
-    document.body.style.overflow = modalOpen || deleteProduct ? "hidden" : "";
+    document.body.style.overflow = modalOpen || imageModalOpen || deleteProduct ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [deleteProduct, modalOpen]);
+  }, [deleteProduct, imageModalOpen, modalOpen]);
 
   const categories = useMemo(
     () => [...new Set(products.map((product) => product.category).filter(Boolean))].sort(),
+    [products]
+  );
+  const subCategories = useMemo(
+    () => [...new Set(products.map((product) => product.sub_category).filter(Boolean))].sort(),
     [products]
   );
   const visibleProducts = useMemo(() => {
@@ -264,6 +308,7 @@ export function AdminProductsClient() {
 
   function closeModal() {
     if (isSaving || isUploading) return;
+    setImageModalOpen(false);
     setModalOpen(false);
     setSelectedId(null);
     setForm(EMPTY_PRODUCT);
@@ -271,15 +316,43 @@ export function AdminProductsClient() {
 
   function updateField(event) {
     const { name, value, type, checked } = event.target;
-    setForm((current) => ({ ...current, [name]: type === "checkbox" ? checked : value }));
+    setForm((current) => {
+      const nextValue = type === "checkbox" ? checked : value;
+      if (name !== "price") return { ...current, [name]: nextValue };
+      return {
+        ...current,
+        price: nextValue,
+        weight_options: current.weight_options.map((weight) => ({
+          ...weight,
+          price: weightPrice(nextValue, weight.weight_value)
+        }))
+      };
+    });
   }
 
   function updateWeight(index, field, value) {
     setForm((current) => ({
       ...current,
       weight_options: current.weight_options.map((weight, weightIndex) =>
-        weightIndex === index ? { ...weight, [field]: value } : weight
+        weightIndex === index
+          ? {
+              ...weight,
+              [field]: value,
+              ...(field === "weight_value" ? {
+                weight_label: value ? `${value}kg` : "",
+                price: weightPrice(current.price, value)
+              } : {})
+            }
+          : weight
       )
+    }));
+  }
+
+  function updateDisplayField(event) {
+    const { name, checked } = event.target;
+    setForm((current) => ({
+      ...current,
+      display_fields: { ...current.display_fields, [name]: checked }
     }));
   }
 
@@ -297,6 +370,23 @@ export function AdminProductsClient() {
     }));
   }
 
+  function confirmWeight(index) {
+    setForm((current) => ({
+      ...current,
+      weight_options: current.weight_options.map((weight, weightIndex) =>
+        weightIndex === index
+          ? {
+              ...weight,
+              weight_label: weight.weight_value ? `${weight.weight_value}kg` : "",
+              price: weightPrice(current.price, weight.weight_value),
+              on_hand_qty: Math.max(0, Math.trunc(Number(weight.on_hand_qty || 0))),
+              status: Number(weight.on_hand_qty || 0) > 0 ? "available" : "unavailable"
+            }
+          : weight
+      )
+    }));
+  }
+
   async function handleImageUpload(event) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -305,6 +395,7 @@ export function AdminProductsClient() {
     try {
       const imageUrl = await optimizeImage(file);
       setForm((current) => ({ ...current, image_path: imageUrl }));
+      setImageModalOpen(false);
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -321,10 +412,10 @@ export function AdminProductsClient() {
     }
 
     const invalidWeight = form.weight_options.find((weight) =>
-      !cleanString(weight.weight_label) || nullableNumber(weight.price) === null
+      nullableNumber(weight.weight_value) === null || Number(weight.weight_value) <= 0
     );
     if (invalidWeight) {
-      setMessage("Every weight row needs a weight label and price.");
+      setMessage("Every pack size row needs a valid weight.");
       return;
     }
 
@@ -342,6 +433,7 @@ export function AdminProductsClient() {
       const baseProductKey =
         cleanString(form.base_product_key) ||
         slugify(cleanString(form.name).replace(/\s*\(box\)\s*$/i, ""));
+      const parsedMoq = parseMoqText(form.moq_text);
       const payload = {
         id: internalId,
         name: cleanString(form.name),
@@ -351,7 +443,7 @@ export function AdminProductsClient() {
         sales_channel: form.sales_channel,
         base_product_key: baseProductKey,
         configuration: cleanString(form.configuration) || null,
-        packaging: cleanString(form.packaging) || null,
+        packaging: cleanString(form.packaging) || cleanString(form.pack_size) || null,
         pack_size: cleanString(form.pack_size) || null,
         price: nullableNumber(form.price),
         reseller_price: null,
@@ -359,14 +451,15 @@ export function AdminProductsClient() {
         kg_per_box: cleanString(form.pack_size) || null,
         brand: cleanString(form.brand) || null,
         brand_priority: Number(form.brand_priority || 0),
-        moq: Number(form.moq || 1),
-        moq_unit: cleanString(form.moq_unit) || "item",
-        on_hand_qty: Number(form.on_hand_qty || 0),
+        moq: parsedMoq.moq,
+        moq_unit: parsedMoq.unit,
+        on_hand_qty: Math.max(0, Math.trunc(Number(form.on_hand_qty || 0))),
         stock: Number(form.on_hand_qty || 0) > 0 ? "in-stock" : "out-of-stock",
         featured: form.featured,
         default_option: form.default_option,
         notes: cleanString(form.notes) || null,
         description: cleanString(form.description) || null,
+        promo: encodeProductDisplaySettings(form.display_fields, form.public_promo),
         image_path: form.image_path || "/images/parrilla logo.png",
         sort_order: Number(form.sort_order || 0),
         active: form.product_status === "active"
@@ -393,11 +486,11 @@ export function AdminProductsClient() {
         const { error: weightsError } = await supabase.from("product_weight_options").insert(
           form.weight_options.map((weight, index) => ({
             product_id: savedProduct.id,
-            weight_label: cleanString(weight.weight_label),
+            weight_label: `${Number(weight.weight_value)}kg`,
             weight_value: nullableNumber(weight.weight_value),
-            price: Number(weight.price),
-            on_hand_qty: Number(weight.on_hand_qty || 0),
-            status: weight.status,
+            price: Number(weightPrice(form.price, weight.weight_value)),
+            on_hand_qty: Math.max(0, Math.trunc(Number(weight.on_hand_qty || 0))),
+            status: Number(weight.on_hand_qty || 0) > 0 ? "available" : "unavailable",
             sort_order: index
           }))
         );
@@ -559,77 +652,74 @@ export function AdminProductsClient() {
         <div className="admin-product-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && closeModal()}>
           <section className="admin-product-modal admin-product-modal-wide" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
             <header>
-              <div><p>{selectedId ? "Edit product SKU" : "New product SKU"}</p><h2 id="product-modal-title">{selectedId ? form.name : "Add New Product"}</h2></div>
+              <div><p>{selectedId ? "Edit Product" : "New Product"}</p><h2 id="product-modal-title">{selectedId ? form.name : "Add New Product"}</h2></div>
               <button type="button" onClick={closeModal} aria-label="Close product form">×</button>
             </header>
             <form onSubmit={saveProduct}>
               {message ? <div className="admin-inline-message admin-modal-message">{message}</div> : null}
-              <div className="admin-product-upload">
-                <img src={form.image_path || "/images/parrilla logo.png"} alt="Product preview" />
-                <div><strong>Product Image</strong><p>JPG, PNG, or WebP. The preview is saved with this SKU.</p>
-                  <button className="admin-secondary-action" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>{isUploading ? "Processing..." : "Upload Product Image"}</button>
-                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageUpload} hidden />
-                </div>
-              </div>
 
               <fieldset className="admin-product-form-section">
                 <legend>Product Identity</legend>
-                <div className="admin-product-form-grid admin-product-form-grid-three">
-                  <label><span>Product Name</span><input name="name" value={form.name} onChange={updateField} required /></label>
-                  <label><span>SKU / Product ID</span><input value={form.sku || "Generated automatically"} disabled /></label>
-                  <label><span>Base Product Key</span><input name="base_product_key" value={form.base_product_key} onChange={updateField} placeholder="Auto-generated from product name" /></label>
-                  <label><span>Category</span><input name="category" value={form.category} onChange={updateField} list="product-categories" required /><datalist id="product-categories">{categories.map((category) => <option key={category} value={category} />)}</datalist></label>
-                  <label><span>Sub-Category</span><input name="sub_category" value={form.sub_category} onChange={updateField} /></label>
-                  <label><span>Sales Channel</span><select name="sales_channel" value={form.sales_channel} onChange={updateField}>{CHANNELS.map((channel) => <option key={channel}>{channel}</option>)}</select></label>
-                  <label><span>Brand</span><input name="brand" value={form.brand} onChange={updateField} placeholder="Optional" /></label>
-                  <label><span>Brand Priority</span><input type="number" name="brand_priority" value={form.brand_priority} onChange={updateField} /></label>
-                  <label><span>Configuration</span><input name="configuration" value={form.configuration} onChange={updateField} placeholder="e.g. 1kg or 500g" /></label>
+                <div className="admin-product-identity-layout">
+                  <div className="admin-product-identity-image">
+                    <img src={form.image_path || "/images/parrilla logo.png"} alt="Product preview" />
+                    <button type="button" onClick={() => setImageModalOpen(true)}>Upload an image</button>
+                  </div>
+                  <div className="admin-product-form-grid admin-product-form-grid-two">
+                    <label><span>Product Number</span><input value={form.sku || "Generated automatically"} disabled /></label>
+                    <label><span>Product Name</span><input name="name" value={form.name} onChange={updateField} required /></label>
+                    <label><span>Brand <small>Optional</small></span><input name="brand" value={form.brand} onChange={updateField} /></label>
+                    <label><span>Category</span><select name="category" value={form.category} onChange={updateField} required><option value="">Select category</option>{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
+                    <label><span>Sub-Category</span><select name="sub_category" value={form.sub_category} onChange={updateField}><option value="">Select sub-category</option>{subCategories.map((subCategory) => <option key={subCategory}>{subCategory}</option>)}</select></label>
+                    <label><span>Channel</span><input value={displayStatus(form.sales_channel)} disabled /></label>
+                    <label><span>Status</span><select name="product_status" value={form.product_status} onChange={updateField}><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+                    <label className="admin-form-field-wide"><span>Notes</span><textarea name="notes" value={form.notes} onChange={updateField} rows="3" /></label>
+                  </div>
                 </div>
               </fieldset>
 
               <fieldset className="admin-product-form-section">
                 <legend>Pricing &amp; Inventory</legend>
-                <div className="admin-product-form-grid admin-product-form-grid-three">
-                  <label><span>Pack Size / Unit</span><input name="pack_size" value={form.pack_size} onChange={updateField} /></label>
-                  <label><span>Packaging</span><input name="packaging" value={form.packaging} onChange={updateField} /></label>
+                <div className="admin-product-form-grid admin-product-form-grid-four">
                   <label><span>Price</span><input type="number" min="0" step="0.01" name="price" value={form.price} onChange={updateField} /></label>
-                  <label><span>MOQ</span><input type="number" min="0.001" step="0.001" name="moq" value={form.moq} onChange={updateField} required /></label>
-                  <label><span>MOQ Unit</span><input name="moq_unit" value={form.moq_unit} onChange={updateField} placeholder="pack, box, kg" /></label>
-                  <label><span>On Hand Qty.</span><input type="number" min="0" step="0.001" name="on_hand_qty" value={form.on_hand_qty} onChange={updateField} /></label>
-                  <label><span>Status</span><select name="product_status" value={form.product_status} onChange={updateField}><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
-                  <label><span>Display Order / Priority</span><input type="number" name="sort_order" value={form.sort_order} onChange={updateField} /></label>
+                  <label><span>Pack Size</span><input name="pack_size" value={form.pack_size} onChange={updateField} /></label>
+                  <label><span>On Hand Qty.</span><input type="number" min="0" step="1" name="on_hand_qty" value={form.on_hand_qty} onChange={updateField} /></label>
+                  <label><span>MOQ</span><input name="moq_text" value={form.moq_text} onChange={updateField} placeholder="e.g. 1 pack or 5 kg" /></label>
                 </div>
-              </fieldset>
 
-              <fieldset className="admin-product-form-section admin-weight-section">
-                <div className="admin-weight-heading"><legend>Weight &amp; Pricing</legend><button className="admin-secondary-action" type="button" onClick={addWeight}>+ Add Weight Row</button></div>
-                <p>Add exact sellable weights only when this SKU varies by actual weight.</p>
+                <div className="admin-pack-config">
+                  <div className="admin-weight-heading"><strong>Pack Size Configuration</strong><button className="admin-secondary-action" type="button" onClick={addWeight}>+ Add Weight Row</button></div>
+                  <p>Add selectable pack weights. Price is calculated from the base price above.</p>
                 {form.weight_options.length ? (
                   <div className="admin-weight-table">
-                    <div className="admin-weight-row is-header"><span>Actual Weight</span><span>Numeric Weight</span><span>Price</span><span>On Hand</span><span>Status</span><span /></div>
+                    <div className="admin-weight-row is-header"><span>Weight (kg)</span><span>Qty.</span><span>Price</span><span>Save</span><span>Delete</span></div>
                     {form.weight_options.map((weight, index) => (
                       <div className="admin-weight-row" key={weight.id || index}>
-                        <input value={weight.weight_label} onChange={(event) => updateWeight(index, "weight_label", event.target.value)} placeholder="1.2kg" />
                         <input type="number" min="0" step="0.001" value={weight.weight_value} onChange={(event) => updateWeight(index, "weight_value", event.target.value)} placeholder="1.2" />
-                        <input type="number" min="0" step="0.01" value={weight.price} onChange={(event) => updateWeight(index, "price", event.target.value)} placeholder="0.00" />
-                        <input type="number" min="0" step="0.001" value={weight.on_hand_qty} onChange={(event) => updateWeight(index, "on_hand_qty", event.target.value)} />
-                        <select value={weight.status} onChange={(event) => updateWeight(index, "status", event.target.value)}><option value="available">Available</option><option value="unavailable">Unavailable</option></select>
-                        <button type="button" onClick={() => removeWeight(index)} aria-label="Remove weight row">×</button>
+                        <input type="number" min="0" step="1" value={weight.on_hand_qty} onChange={(event) => updateWeight(index, "on_hand_qty", event.target.value)} />
+                        <input type="number" value={weightPrice(form.price, weight.weight_value)} readOnly aria-label="Calculated price" />
+                        <button className="is-confirm" type="button" onClick={() => confirmWeight(index)} aria-label="Save weight row">✓</button>
+                        <button className="is-remove" type="button" onClick={() => removeWeight(index)} aria-label="Remove weight row">×</button>
                       </div>
                     ))}
                   </div>
-                ) : <div className="admin-weight-empty">No variable weight options. The SKU price above will be used.</div>}
+                ) : <div className="admin-weight-empty">No pack size configurations. The regular Pack Size value will be shown.</div>}
+                </div>
               </fieldset>
 
               <fieldset className="admin-product-form-section">
                 <legend>Customer-Facing Details</legend>
-                <label className="admin-modal-description"><span>Description</span><textarea name="description" value={form.description} onChange={updateField} rows="3" /></label>
-                <label className="admin-modal-description"><span>Notes</span><textarea name="notes" value={form.notes} onChange={updateField} rows="3" placeholder="Shown on product cards, cart, checkout, and order details." /></label>
+                <p className="admin-checklist-help">Checked details are displayed on customer-facing product pages.</p>
+                <div className="admin-product-checklist">
+                  {["Product Name", "Price", "Pack Size"].map((label) => <label className="is-required" key={label}><input type="checkbox" checked disabled /><span>{label}</span></label>)}
+                  <label><input type="checkbox" name="brand" checked={form.display_fields.brand} onChange={updateDisplayField} /><span>Brand</span></label>
+                  <label><input type="checkbox" name="moq" checked={form.display_fields.moq} onChange={updateDisplayField} /><span>MOQ</span></label>
+                  <label><input type="checkbox" name="notes" checked={form.display_fields.notes} onChange={updateDisplayField} /><span>Notes</span></label>
+                </div>
               </fieldset>
 
               <div className="admin-modal-toggles">
                 <label><input type="checkbox" name="featured" checked={form.featured} onChange={updateField} /><span>Featured Product</span></label>
-                <label><input type="checkbox" name="default_option" checked={form.default_option} onChange={updateField} /><span>Default Brand / Configuration</span></label>
               </div>
               <footer>
                 <div>
@@ -645,6 +735,26 @@ export function AdminProductsClient() {
                 </div>
               </footer>
             </form>
+          </section>
+        </div>
+      ) : null}
+
+      {imageModalOpen ? (
+        <div className="admin-confirm-backdrop admin-image-upload-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && !isUploading && setImageModalOpen(false)}>
+          <section className="admin-image-upload-modal" role="dialog" aria-modal="true" aria-labelledby="image-upload-title">
+            <header>
+              <div>
+                <h2 id="image-upload-title">Upload Product Image</h2>
+                <p>Choose a JPG, PNG, or WebP image up to 8 MB.</p>
+              </div>
+              <button type="button" onClick={() => !isUploading && setImageModalOpen(false)} aria-label="Close image upload">×</button>
+            </header>
+            <img src={form.image_path || "/images/parrilla logo.png"} alt="Current product preview" />
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageUpload} hidden />
+            <div>
+              <button className="admin-secondary-action" type="button" onClick={() => setImageModalOpen(false)} disabled={isUploading}>Cancel</button>
+              <button className="admin-primary-action" type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>{isUploading ? "Processing..." : "Choose Image"}</button>
+            </div>
           </section>
         </div>
       ) : null}
