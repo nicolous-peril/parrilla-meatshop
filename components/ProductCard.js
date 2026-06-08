@@ -101,8 +101,8 @@ export function ProductCard({ product, channel }) {
         ) : null}
 
         {weights.length ? (
-          <label className="product-selector">
-            <span>Pack Size</span>
+          <label className="product-selector product-selector-inline">
+            <span>Pack Size:</span>
             <select value={selectedWeight?.id || ""} onChange={(event) => setSelectedWeightId(event.target.value)}>
               {weights.map((weight) => (
                 <option key={weight.id} value={weight.id}>{formatWeightLabel(weight)}</option>

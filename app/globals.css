@@ -3825,6 +3825,32 @@ body:has(.admin-dashboard-shell) .site-footer {
   outline: 0;
 }
 
+.product-selector-inline {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+  padding: 0;
+  width: fit-content;
+}
+
+.product-selector-inline > span {
+  line-height: 1.2;
+}
+
+.product-selector-inline select {
+  border-radius: 5px;
+  font-size: 0.72rem;
+  line-height: 1.15;
+  min-height: 30px;
+  min-width: 78px;
+  padding: 3px 24px 3px 8px;
+  width: auto;
+}
+
 .product-stock-badge {
   align-self: flex-start;
   border-radius: 999px;
